@@ -20,10 +20,12 @@
     .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
     .card h2{margin:0;padding:14px 16px;border-bottom:1px solid var(--line);font-size:15px}
     .card .content{padding:14px 16px}
-    .row{display:flex;gap:10px;align-items:center;margin-bottom:10px}
-    label{font-size:12px;color:var(--muted)}
-    .row label{min-width:120px}
-    input,select{width:100%;padding:8px;border-radius:10px;border:1px solid var(--line);background:#0c1626;color:var(--text)}
+
+    /* SETTINGS layout: pair side-by-side, note below */
+    .row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+    .pair{display:flex;gap:10px;align-items:center}
+    .pair label{min-width:140px;font-size:12px;color:var(--muted)}
+    .pair input,.pair select{flex:1;min-width:0;padding:8px;border-radius:10px;border:1px solid var(--line);background:#0c1626;color:var(--text)}
     input[type="number"]{appearance:textfield}
     input:focus,select:focus{outline:2px solid rgba(96,165,250,.35)}
     .note{font-size:12px;color:var(--muted)}
@@ -43,7 +45,16 @@
     tbody tr:hover{background:#0d1628}
     .number{width:100px}
     .qty{width:72px}
-    .select{min-width:110px}
+    .select{min-width:150px} /* wider selects overall */
+
+    /* Make Category / Type / Entry columns more readable */
+    #loadTable th:nth-child(2),
+    #loadTable th:nth-child(3),
+    #loadTable th:nth-child(4){min-width:140px}
+    #loadTable td:nth-child(2) select,
+    #loadTable td:nth-child(3) select,
+    #loadTable td:nth-child(4) select{min-width:140px}
+
     .center{text-align:center}
 
     .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -79,51 +90,77 @@
       <h2>System & Sizing Settings</h2>
       <div class="content">
         <div class="row">
-          <label for="voltage">System voltage</label>
-          <select id="voltage" class="select">
-            <option value="12">12 V</option>
-            <option value="24">24 V</option>
-            <option value="48">48 V</option>
-          </select>
+          <div class="pair">
+            <label for="voltage">System voltage</label>
+            <select id="voltage" class="select">
+              <option value="12">12 V</option>
+              <option value="24">24 V</option>
+              <option value="48">48 V</option>
+            </select>
+          </div>
+          <span class="note">Choose your DC system nominal voltage (12/24/48 V).</span>
         </div>
+
         <div class="row">
-          <label for="chemistry">Battery chemistry</label>
-          <select id="chemistry" class="select">
-            <option value="LFP">LiFePO₄</option>
-            <option value="AGM">AGM / Flooded Lead‑acid</option>
-            <option value="GEL">Gel</option>
-          </select>
+          <div class="pair">
+            <label for="chemistry">Battery chemistry</label>
+            <select id="chemistry" class="select">
+              <option value="LFP">LiFePO₄</option>
+              <option value="AGM">AGM / Flooded Lead-acid</option>
+              <option value="GEL">Gel</option>
+            </select>
+          </div>
+          <span class="note">This sets a sensible default usable depth-of-discharge (DoD).</span>
         </div>
+
         <div class="row">
-          <label for="dod">Usable DoD (%)</label>
-          <input id="dod" type="number" min="10" max="99" step="1" class="number" />
-          <span class="note">Typical: LFP 85–90%, AGM 50%, Gel 50–60%</span>
+          <div class="pair">
+            <label for="dod">Usable DoD (%)</label>
+            <input id="dod" type="number" min="10" max="99" step="1" class="number" />
+          </div>
+          <span class="note">Typical: LFP 85–90%, AGM 50%, Gel 50–60%.</span>
         </div>
+
         <div class="row">
-          <label for="reserve">Reserve margin (%)</label>
-          <input id="reserve" type="number" min="0" max="100" step="1" class="number" value="20"/>
-          <span class="note">Safety headroom on top of trip energy</span>
+          <div class="pair">
+            <label for="reserve">Reserve margin (%)</label>
+            <input id="reserve" type="number" min="0" max="100" step="1" class="number" value="20"/>
+          </div>
+          <span class="note">Safety headroom on top of trip energy.</span>
         </div>
+
         <div class="row">
-          <label for="days">Trip length (days)</label>
-          <input id="days" type="number" min="1" step="1" class="number" value="2"/>
-          <span class="note">Per‑day hours entered below will be multiplied by this</span>
+          <div class="pair">
+            <label for="days">Trip length (days)</label>
+            <input id="days" type="number" min="1" step="1" class="number" value="2"/>
+          </div>
+          <span class="note">Per-day hours entered below will be multiplied by this value.</span>
         </div>
+
         <div class="row">
-          <label for="derate">Capacity derate for temp/age (%)</label>
-          <input id="derate" type="number" min="0" max="50" step="1" class="number" value="0"/>
-          <span class="note">Optional: reduce effective capacity to model cold/aging</span>
+          <div class="pair">
+            <label for="derate">Capacity derate for temp/age (%)</label>
+            <input id="derate" type="number" min="0" max="50" step="1" class="number" value="0"/>
+          </div>
+          <span class="note">Optional: reduce effective capacity to model cold/aging.</span>
         </div>
+
         <div class="row">
-          <label for="invEff">Inverter efficiency (%)</label>
-          <input id="invEff" type="number" min="50" max="100" step="1" class="number" value="90"/>
-          <span class="note">Only used for AC loads</span>
+          <div class="pair">
+            <label for="invEff">Inverter efficiency (%)</label>
+            <input id="invEff" type="number" min="50" max="100" step="1" class="number" value="90"/>
+          </div>
+          <span class="note">Only used for AC loads.</span>
         </div>
+
         <div class="row">
-          <label for="invStandby">Inverter standby (W)</label>
-          <input id="invStandby" type="number" min="0" step="1" class="number" value="6"/>
-          <span class="note">Estimated “on but idle” draw; uses max AC hours per day</span>
+          <div class="pair">
+            <label for="invStandby">Inverter standby (W)</label>
+            <input id="invStandby" type="number" min="0" step="1" class="number" value="6"/>
+          </div>
+          <span class="note">Estimated “on but idle” draw; uses max AC hours per day.</span>
         </div>
+
         <div class="foot">Tip: Switch anchor light to LED in the library to see instant savings.</div>
       </div>
     </section>
@@ -133,7 +170,7 @@
       <h2>Loads & Energy Model</h2>
       <div class="content">
         <div class="tabs no-print">
-          <span class="pill">Hours below are per day. Use both columns to separate At‑Anchor vs Underway usage, inspired by marine worksheets. </span>
+          <span class="pill">Hours below are per day. Use both columns to separate At-Anchor vs Underway usage, inspired by marine worksheets. </span>
         </div>
 
         <div class="toolbar no-print">
@@ -222,7 +259,7 @@
       // Comfort
       libA('Cabin Fan', 'Comfort', 0.18, 12, 0, 100, 1, 'DC'),
       // Galley & misc
-      libW('Laptop (USB‑PD 65 W)', 'Misc', 65, 4, 0, 100, 1, 'DC'),
+      libW('Laptop (USB-PD 65 W)', 'Misc', 65, 4, 0, 100, 1, 'DC'),
       libW('Laptop (AC 65 W via inverter)', 'Misc', 65, 4, 0, 100, 1, 'AC'),
       libW('Fridge (60 W @ 35% duty)', 'Misc', 60, 24, 0, 35, 1, 'DC'),
       libW('Microwave 900 W (10 min)', 'Galley', 900, .17, 0, 100, 1, 'AC'),
@@ -279,7 +316,7 @@
     });
 
     // Add default rows for quick start
-    ['Anchor Light (Incandescent 25 W)','Chartplotter/MFD','Cabin Fan','Stereo (avg listening)','Laptop (USB‑PD 65 W)'].forEach(n=>{
+    ['Anchor Light (Incandescent 25 W)','Chartplotter/MFD','Cabin Fan','Stereo (avg listening)','Laptop (USB-PD 65 W)'].forEach(n=>{
       const item = LIB.find(x=>x.name===n); if(item) addRow({...item});
     });
 
