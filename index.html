@@ -31,8 +31,10 @@
     .note{font-size:12px;color:var(--muted)}
 
     .tabs{display:flex;gap:8px;margin-bottom:10px}
-    .tab{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#0c1626;font-size:12px;color:var(--muted);cursor:pointer}
+    .tab{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#0c1626;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
     .tab.active{color:var(--text);background:#132038}
+    .tabpanes > .pane{display:none}
+    .tabpanes > .pane.active{display:block}
 
     .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
     button{background:#0c1626;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer}
@@ -64,6 +66,7 @@
     .kpi .value{font-size:18px;margin-top:4px}
     .kpi.ok .value{color:var(--ok)}
     .kpi.warn .value{color:var(--warn)}
+    .kpi.bad .value{color:var(--bad)}
 
     .foot{margin-top:14px;font-size:12px;color:var(--muted)}
     .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#0c1626;font-size:11px;margin-right:6px}
@@ -81,7 +84,7 @@
 <body>
   <header>
     <h1>Boat Battery Sizer & Load Calculator</h1>
-    <div class="sub">Model daily DC/AC loads, trip energy, and battery size (nameplate & usable). Save scenarios locally and export CSV or print a report.</div>
+    <div class="sub">Model daily DC/AC loads, generation/charging, and battery size. Save scenarios, export CSV, or print a report.</div>
   </header>
 
   <main class="grid">
@@ -110,7 +113,7 @@
               <option value="GEL">Gel</option>
             </select>
           </div>
-          <span class="note">This sets a sensible default usable depth-of-discharge (DoD).</span>
+          <span class="note">Sets a sensible default usable depth-of-discharge (DoD).</span>
         </div>
 
         <div class="row">
@@ -134,7 +137,7 @@
             <label for="days">Trip length (days)</label>
             <input id="days" type="number" min="1" step="1" class="number" value="2"/>
           </div>
-          <span class="note">Per-day hours entered below will be multiplied by this value.</span>
+          <span class="note">Per-day hours entered below × this many days.</span>
         </div>
 
         <div class="row">
@@ -158,62 +161,115 @@
             <label for="invStandby">Inverter standby (W)</label>
             <input id="invStandby" type="number" min="0" step="1" class="number" value="6"/>
           </div>
-          <span class="note">Estimated “on but idle” draw; uses max AC hours per day.</span>
+          <span class="note">“On but idle” draw; uses max AC hours per mode.</span>
         </div>
 
         <div class="foot">Tip: Switch anchor light to LED in the library to see instant savings.</div>
       </div>
     </section>
 
-    <!-- LOADS & RESULTS -->
-    <section class="card" aria-label="Loads">
-      <h2>Loads & Energy Model</h2>
+    <!-- LOADS & GENERATION (TABS) -->
+    <section class="card" aria-label="Loads and Generation">
+      <h2>Energy Model</h2>
       <div class="content">
-        <div class="tabs no-print">
-          <span class="pill">Hours below are per day. Use both columns to separate At-Anchor vs Underway usage, inspired by marine worksheets. </span>
+        <div class="tabs no-print" role="tablist" aria-label="Energy tabs">
+          <div id="tab-loads" class="tab active" role="tab" aria-controls="pane-loads" aria-selected="true">Loads</div>
+          <div id="tab-gen" class="tab" role="tab" aria-controls="pane-gen" aria-selected="false">Generation & Charging</div>
         </div>
 
-        <div class="toolbar no-print">
-          <button class="primary" id="addRow">Add Load</button>
-          <select id="libSelect"></select>
-          <button id="addFromLib">Add from Library</button>
-          <button id="saveScenario">Save</button>
-          <button id="loadScenario">Load</button>
-          <button id="exportCsv">Export CSV</button>
-          <button onclick="window.print()">Print Report</button>
-          <button id="resetAll">Reset</button>
+        <div class="tabpanes">
+          <!-- LOADS -->
+          <div id="pane-loads" class="pane active" role="tabpanel" aria-labelledby="tab-loads">
+            <div class="toolbar no-print">
+              <button class="primary" id="addRow">Add Load</button>
+              <select id="libSelect"></select>
+              <button id="addFromLib">Add from Library</button>
+              <button id="saveScenario">Save</button>
+              <button id="loadScenario">Load</button>
+              <button id="exportCsv">Export CSV</button>
+              <button onclick="window.print()">Print Report</button>
+              <button id="resetAll">Reset</button>
+            </div>
+
+            <div class="note hide-print">Columns: Name • Category • DC/AC • Entry (Watts/Amps) • Value • Hours (Anchor/Underway) • Duty % • Qty • Delete</div>
+
+            <div style="overflow:auto">
+              <table id="loadTable" aria-describedby="table of loads">
+                <thead>
+                  <tr>
+                    <th style="min-width:220px">Name</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Entry</th>
+                    <th class="center">W/A</th>
+                    <th class="center">Hours @ Anchor</th>
+                    <th class="center">Hours Underway</th>
+                    <th class="center">Duty %</th>
+                    <th class="center">Qty</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- GENERATION -->
+          <div id="pane-gen" class="pane" role="tabpanel" aria-labelledby="tab-gen">
+            <div class="toolbar no-print">
+              <button class="primary" id="addGen">Add Source</button>
+              <select id="genLibSelect"></select>
+              <button id="addGenFromLib">Add from Library</button>
+            </div>
+
+            <div class="note hide-print">Sources: Solar (panel W × qty, sun hours, derate %, controller eff %), Wind (rated W × capacity %), Alternator (DC A × hours), AC Charger (DC A × hours × eff %).</div>
+
+            <div style="overflow:auto">
+              <table id="genTable" aria-describedby="table of generation">
+                <thead>
+                  <tr>
+                    <th style="min-width:220px">Name</th>
+                    <th>Type</th>
+                    <th class="center">Param A</th>
+                    <th class="center">Param B</th>
+                    <th class="center">Param C</th>
+                    <th class="center">Param D</th>
+                    <th class="center">Param E</th>
+                    <th class="center">Hours/day</th>
+                    <th class="center">Qty</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="genBody"></tbody>
+              </table>
+            </div>
+
+            <div class="foot">
+              Param meanings by Type:
+              <span class="pill">Solar: Panel W • Panels • Sun Hrs • Derate % • Ctrl Eff %</span>
+              <span class="pill">Wind: Rated W • Capacity % • — • — • —</span>
+              <span class="pill">Alternator: DC A • — • — • — • —</span>
+              <span class="pill">AC Charger: DC A • Eff % • — • — • —</span>
+            </div>
+          </div>
         </div>
 
-        <div class="note hide-print">Columns: Name • Category • DC/AC • Entry (Watts/Amps) • Value • Hours (Anchor/Underway) • Duty % • Qty • Delete</div>
-
-        <div style="overflow:auto">
-          <table id="loadTable" aria-describedby="table of loads">
-            <thead>
-              <tr>
-                <th style="min-width:220px">Name</th>
-                <th>Category</th>
-                <th>Type</th>
-                <th>Entry</th>
-                <th class="center">W/A</th>
-                <th class="center">Hours @ Anchor</th>
-                <th class="center">Hours Underway</th>
-                <th class="center">Duty %</th>
-                <th class="center">Qty</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="tbody">
-            </tbody>
-          </table>
-        </div>
-
+        <!-- KPIs -->
         <div class="summary" style="margin-top:12px">
-          <div class="kpi"><div class="label">DC + AC (after inverter) — Wh/day</div><div id="whDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">Ah/day @ <span id="vLabel">12</span> V</div><div id="ahDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">Trip energy — Wh / Ah</div><div id="tripWhAh" class="value">0 / 0</div></div>
+          <div class="kpi"><div class="label">LOADS — DC + AC (after inverter) — Wh/day</div><div id="whDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">LOADS — Ah/day @ <span id="vLabel">12</span> V</div><div id="ahDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">GEN — Wh/day</div><div id="genWhDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">GEN — Ah/day @ <span id="vLabel2">12</span> V</div><div id="genAhDay" class="value">0</div></div>
+        </div>
+
+        <div class="summary" style="margin-top:6px">
+          <div class="kpi"><div class="label">NET (Gen − Loads) — Wh/day</div><div id="netWhDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">NET — Ah/day</div><div id="netAhDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">Trip energy — Wh / Ah (loads only)</div><div id="tripWhAh" class="value">0 / 0</div></div>
           <div class="kpi"><div class="label">Battery required — Usable / Nameplate (Ah)</div><div id="bankAh" class="value">0 / 0</div></div>
         </div>
 
+        <!-- Restored detail breakdown elements used by JS -->
         <div class="summary" style="margin-top:6px">
           <div class="kpi"><div class="label">Anchor — Wh / Ah per day</div><div id="anchorWhAh" class="value">0 / 0</div></div>
           <div class="kpi"><div class="label">Underway — Wh / Ah per day</div><div id="sailWhAh" class="value">0 / 0</div></div>
@@ -221,7 +277,7 @@
           <div class="kpi"><div class="label">Suggested module layout</div><div id="suggestLayout" class="value">—</div></div>
         </div>
 
-        <div class="foot">Assumptions: AC loads converted using inverter efficiency; standby time uses max AC hours per mode. Nameplate capacity = Trip Ah × (1+reserve) ÷ usable DoD, then adjusted by optional derate.</div>
+        <div class="foot">Notes: Generation is daily potential energy at the DC bus. AC charger values are DC output amps (at battery voltage). Solar derate covers temp/angle/shade; controller efficiency covers MPPT/PWM losses.</div>
       </div>
     </section>
   </main>
@@ -244,7 +300,7 @@
 
     const CATS = ['Lights','Nav/Comms','Instruments','Pumps','Comfort','Galley','Entertainment','Misc'];
 
-    // Library items (editable once added)
+    // Library items (LOADS)
     const LIB = [
       // Lights
       libW('Anchor Light (LED)', 'Lights', 2, 8, 0, 100, 1, 'DC'),
@@ -273,14 +329,23 @@
       return {name, category:cat, type:type||'DC', entry:'A', value:amps, hAnchor:hA, hSail:hS, duty, qty};
     }
 
+    // Library items (GENERATION)
+    const GEN_LIB = [
+      genSolar('Solar: 200 W × 2, 4.5 h, 15% derate, 96% MPPT', 200, 2, 4.5, 15, 96, 1),
+      genAC('AC Charger 30 A', 30, 92, 4, 1),
+      genWind('Wind 400 W @ 20% CF', 400, 20, 24, 1),
+      genAlt('Alternator 40 A', 40, 2, 1),
+    ];
+
     // ---------- State ----------
     let state = {
       settings: {...DEFAULTS},
-      rows: []
+      rows: [],
+      gen: []
     };
 
     // ---------- Init UI ----------
-    const tbody = $('#tbody');
+    // Settings
     const voltage = $('#voltage');
     const chemistry = $('#chemistry');
     const dod = $('#dod');
@@ -289,6 +354,20 @@
     const invEff = $('#invEff');
     const invStandby = $('#invStandby');
     const derate = $('#derate');
+
+    // Loads
+    const tbody = $('#tbody');
+    const libSelect = $('#libSelect');
+
+    // Generation
+    const genBody = $('#genBody');
+    const genLibSelect = $('#genLibSelect');
+
+    // Tabs
+    const tabLoads = $('#tab-loads');
+    const tabGen = $('#tab-gen');
+    const paneLoads = $('#pane-loads');
+    const paneGen = $('#pane-gen');
 
     // Set defaults
     voltage.value = DEFAULTS.voltage;
@@ -304,8 +383,7 @@
 
     [voltage,reserve,days,invEff,invStandby,derate].forEach(el=> el.addEventListener('input', recalc));
 
-    // Library selector
-    const libSelect = $('#libSelect');
+    // Library selector (loads)
     function refreshLib(){
       libSelect.innerHTML = LIB.map((it,i)=>`<option value="${i}">${escapeHtml(it.name)} — ${it.category}</option>`).join('');
     }
@@ -315,12 +393,26 @@
       addRow({...LIB[i]});
     });
 
-    // Add default rows for quick start
+    // Generation library
+    function refreshGenLib(){
+      genLibSelect.innerHTML = GEN_LIB.map((it,i)=>`<option value="${i}">${escapeHtml(it.name)}</option>`).join('');
+    }
+    refreshGenLib();
+    $('#addGenFromLib').addEventListener('click', ()=>{
+      const i = +genLibSelect.value; if(isNaN(i)) return;
+      addGenRow({...GEN_LIB[i]});
+    });
+
+    // Default rows for quick start
     ['Anchor Light (Incandescent 25 W)','Chartplotter/MFD','Cabin Fan','Stereo (avg listening)','Laptop (USB-PD 65 W)'].forEach(n=>{
       const item = LIB.find(x=>x.name===n); if(item) addRow({...item});
     });
+    // One default generation example
+    addGenRow({...GEN_LIB[0]});
 
+    // Buttons
     $('#addRow').addEventListener('click', ()=> addRow());
+    $('#addGen').addEventListener('click', ()=> addGenRow());
 
     $('#exportCsv').addEventListener('click', exportCSV);
     $('#saveScenario').addEventListener('click', ()=>{
@@ -333,12 +425,32 @@
       try{ const data = JSON.parse(raw); loadState(data); toast('Scenario loaded.'); }catch(e){ toast('Failed to load scenario.'); }
     });
     $('#resetAll').addEventListener('click', ()=>{
-      if(confirm('Clear all rows and reset settings?')){ state.rows=[]; tbody.innerHTML='';
+      if(confirm('Clear all rows and reset settings?')){
+        state.rows=[]; tbody.innerHTML='';
+        state.gen=[]; genBody.innerHTML='';
         ['Anchor Light (LED)','Chartplotter/MFD'].forEach(n=>{ const it = LIB.find(x=>x.name===n); if(it) addRow({...it});});
-        voltage.value=12; chemistry.value='LFP'; dod.value=DEFAULTS.dodByChem['LFP']; reserve.value=20; days.value=1; invEff.value=90; invStandby.value=6; derate.value=0; recalc();
+        addGenRow({...GEN_LIB[0]});
+        voltage.value=12; chemistry.value='LFP'; dod.value=DEFAULTS.dodByChem['LFP']; reserve.value=20; days.value=1; invEff.value=90; invStandby.value=6; derate.value=0;
+        recalc();
       }
     });
 
+    // Tabs behavior
+    function setTab(which){
+      if(which==='loads'){
+        tabLoads.classList.add('active'); tabLoads.setAttribute('aria-selected','true');
+        tabGen.classList.remove('active'); tabGen.setAttribute('aria-selected','false');
+        paneLoads.classList.add('active'); paneGen.classList.remove('active');
+      } else {
+        tabGen.classList.add('active'); tabGen.setAttribute('aria-selected','true');
+        tabLoads.classList.remove('active'); tabLoads.setAttribute('aria-selected','false');
+        paneGen.classList.add('active'); paneLoads.classList.remove('active');
+      }
+    }
+    tabLoads.addEventListener('click', ()=>setTab('loads'));
+    tabGen.addEventListener('click', ()=>setTab('gen'));
+
+    // ---------- Load/Save ----------
     function loadState(data){
       try{
         voltage.value = data.settings.voltage || 12;
@@ -349,13 +461,17 @@
         invEff.value = data.settings.invEff ?? 90;
         invStandby.value = data.settings.invStandby ?? 6;
         derate.value = data.settings.derate ?? 0;
-        tbody.innerHTML='';
-        state.rows = [];
+
+        tbody.innerHTML=''; state.rows = [];
         (data.rows||[]).forEach(r=> addRow(r));
+
+        genBody.innerHTML=''; state.gen = [];
+        (data.gen||[]).forEach(g=> addGenRow(g));
       }catch(e){ console.error(e); }
       recalc();
     }
 
+    // ---------- LOADS table ----------
     function addRow(row){
       const r = Object.assign({
         name:'New Load', category:CATS[0], type:'DC', entry:'W', value:1, hAnchor:0, hSail:0, duty:100, qty:1
@@ -385,7 +501,6 @@
         <td class="center"><button title="Delete" aria-label="Delete row">✕</button></td>
       `;
       tbody.appendChild(tr);
-      // Wire events
       const [iName, iCat, iType, iEntry, iVal, iHA, iHS, iDuty, iQty, iDel] = [
         tr.children[0].firstElementChild,
         tr.children[1].firstElementChild,
@@ -408,11 +523,97 @@
       iDel.addEventListener('click', ()=>{ state.rows = state.rows.filter(x=>x!==r); tr.remove(); recalc(); });
       recalc();
     }
-
     function catSelect(val){
       return `<select>${CATS.map(c=>`<option ${c===val?'selected':''}>${c}</option>`).join('')}</select>`
     }
 
+    // ---------- GENERATION table ----------
+    function addGenRow(row){
+      const g = Object.assign({
+        name:'New Source', type:'Solar',
+        // Params (generic slots): a,b,c,d,e, hours, qty
+        // Solar: panelW=a, panels=b, sunHrs=c, derate%=d, ctrlEff%=e
+        a:200, b:1, c:4, d:10, e:96,
+        hours:24, qty:1
+      }, row||{});
+      state.gen.push(g);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input aria-label="Name" value="${escapeAttr(g.name)}"/></td>
+        <td>
+          <select aria-label="Source Type">
+            ${['Solar','Wind','Alternator','AC Charger'].map(t=>`<option ${t===g.type?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </td>
+        <td><input type="number" step="0.01" class="number" aria-label="Param A" value="${g.a}"/></td>
+        <td><input type="number" step="0.01" class="number" aria-label="Param B" value="${g.b}"/></td>
+        <td><input type="number" step="0.01" class="number" aria-label="Param C" value="${g.c}"/></td>
+        <td><input type="number" step="0.01" class="number" aria-label="Param D" value="${g.d}"/></td>
+        <td><input type="number" step="0.01" class="number" aria-label="Param E" value="${g.e ?? 0}"/></td>
+        <td><input type="number" step="0.1" class="number" aria-label="Hours per day" value="${g.hours}"/></td>
+        <td><input type="number" step="1" class="qty" aria-label="Qty" value="${g.qty}"/></td>
+        <td class="center"><button title="Delete" aria-label="Delete row">✕</button></td>
+      `;
+      genBody.appendChild(tr);
+
+      const [iName, iType, iA, iB, iC, iD, iE, iH, iQty, iDel] = [
+        tr.children[0].firstElementChild,
+        tr.children[1].firstElementChild,
+        tr.children[2].firstElementChild,
+        tr.children[3].firstElementChild,
+        tr.children[4].firstElementChild,
+        tr.children[5].firstElementChild,
+        tr.children[6].firstElementChild,
+        tr.children[7].firstElementChild,
+        tr.children[8].firstElementChild,
+        tr.children[9].firstElementChild,
+      ];
+
+      function normalizeForType(){
+        const t = iType.value;
+        if(t==='Solar'){
+          if(num(iH.value)===0) iH.value = String(num(iC.value)); // hours ~ sunHrs
+        } else if(t==='Wind'){
+          if(num(iH.value)===0) iH.value = '24';
+          iC.value = iC.value || '0'; iD.value = iD.value || '0'; iE.value = iE.value || '0';
+        } else if(t==='Alternator'){
+          iB.value = iB.value || '0'; iC.value = iC.value || '0'; iD.value = iD.value || '0'; iE.value = iE.value || '0';
+        } else if(t==='AC Charger'){
+          if(num(iB.value)===0) iB.value = '92'; // eff %
+          iC.value = iC.value || '0'; iD.value = iD.value || '0'; iE.value = iE.value || '0';
+        }
+      }
+
+      const sync = ()=>{
+        g.name=iName.value; g.type=iType.value;
+        g.a=num(iA.value); g.b=num(iB.value); g.c=num(iC.value); g.d=num(iD.value); g.e=num(iE.value);
+        g.hours=num(iH.value); g.qty=Math.max(0, Math.round(num(iQty.value))||0);
+        normalizeForType();
+        recalc();
+      };
+
+      [iName,iType,iA,iB,iC,iD,iE,iH,iQty].forEach(el=> el.addEventListener('input', sync));
+      iDel.addEventListener('click', ()=>{ state.gen = state.gen.filter(x=>x!==g); tr.remove(); recalc(); });
+      normalizeForType();
+      recalc();
+    }
+
+    // ---------- GEN library helpers ----------
+    function genSolar(name, panelW, panels, sunHrs, deratePct, ctrlEffPct, qty){
+      return { name, type:'Solar', a:panelW, b:panels, c:sunHrs, d:deratePct, e:ctrlEffPct, hours:sunHrs, qty:qty ?? 1 };
+    }
+    function genAC(name, dcAmps, effPct, hours, qty){
+      return { name, type:'AC Charger', a:dcAmps, b:effPct, c:0, d:0, e:0, hours:hours ?? 2, qty:qty ?? 1 };
+    }
+    function genWind(name, ratedW, capacityPct, hours, qty){
+      return { name, type:'Wind', a:ratedW, b:capacityPct, c:0, d:0, e:0, hours:hours ?? 24, qty:qty ?? 1 };
+    }
+    function genAlt(name, dcAmps, hours, qty){
+      return { name, type:'Alternator', a:dcAmps, b:0, c:0, d:0, e:0, hours:hours ?? 2, qty:qty ?? 1 };
+    }
+
+    // ---------- Utils ----------
     function num(v){ const n = parseFloat(v); return isNaN(n)?0:n; }
     function clamp(x,a,b){ return Math.min(b, Math.max(a,x)); }
     function escapeHtml(s=''){return s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -439,50 +640,73 @@
         derate: clamp(num(derate.value),0,80),
       };
       $('#vLabel').textContent = state.settings.voltage;
+      $('#vLabel2').textContent = state.settings.voltage;
 
-      // Per-row energy
+      // Loads: per-row energy
       let anchorWh=0, sailWh=0, acAnchorHours=0, acSailHours=0;
       for(const r of state.rows){
         const duty = (r.duty||0)/100; const qty = r.qty||0;
-        // energy per mode
         const whA = rowWh(r, r.hAnchor, duty, qty);
         const whS = rowWh(r, r.hSail, duty, qty);
         if(r.type==='AC'){ acAnchorHours = Math.max(acAnchorHours, r.hAnchor||0); acSailHours = Math.max(acSailHours, r.hSail||0); }
         anchorWh += whA; sailWh += whS;
       }
-
-      // Inverter standby (approx: max AC hours per mode)
       const standbyWhDay = state.settings.invStandby * (acAnchorHours + acSailHours);
-
       const whDayTotal = anchorWh + sailWh + standbyWhDay;
       const ahDayTotal = whDayTotal / state.settings.voltage;
 
+      // Generation: per-source energy (Wh/day at DC bus)
+      let genWhDay = 0;
+      for(const g of state.gen){
+        const qty = g.qty||0;
+        genWhDay += genRowWh(g, state.settings) * qty;
+      }
+      const genAhDay = genWhDay / state.settings.voltage;
+
+      // Net
+      const netWh = genWhDay - whDayTotal;
+      const netAh = genAhDay - ahDayTotal;
+
+      // Trip (loads only)
       const tripWh = whDayTotal * state.settings.days;
       const tripAh = ahDayTotal * state.settings.days;
 
-      // Battery sizing
-      const usableDoD = state.settings.dod/100; // as fraction
+      // Battery sizing (based on loads)
+      const usableDoD = state.settings.dod/100;
       const withReserveAh = tripAh * (1 + state.settings.reserve/100);
       let nameplateAh = withReserveAh / usableDoD;
-      // Derate increases the required nameplate (capacity loss)
       if(state.settings.derate>0){ nameplateAh = nameplateAh / (1 - state.settings.derate/100); }
 
       // Suggest layout using 100Ah modules
       const modules100 = Math.max(1, Math.ceil(nameplateAh/100));
       const layout = `${modules100} × 100 Ah @ ${state.settings.voltage} V`;
 
+      // KPI coloring on NET
+      const netWhEl = $('#netWhDay').closest('.kpi');
+      netWhEl.classList.remove('ok','warn','bad');
+      if(netWh > 0) netWhEl.classList.add('ok');
+      else if(Math.abs(netWh) < 200) netWhEl.classList.add('warn');
+      else netWhEl.classList.add('bad');
+
       // Write UI
+      $('#whDay').textContent = fmt(whDayTotal);
+      $('#ahDay').textContent = fmt(ahDayTotal);
+      $('#genWhDay').textContent = fmt(genWhDay);
+      $('#genAhDay').textContent = fmt(genAhDay);
+      $('#netWhDay').textContent = fmt(netWh);
+      $('#netAhDay').textContent = fmt(netAh);
+
+      $('#tripWhAh').textContent = `${fmt(tripWh)} / ${fmt(tripAh)}`;
+      $('#bankAh').textContent = `${fmt(withReserveAh)} / ${fmt(nameplateAh)}`;
+
+      // detail breakdown
       $('#anchorWhAh').textContent = `${fmt(anchorWh)} / ${fmt(anchorWh / state.settings.voltage)} Ah`;
       $('#sailWhAh').textContent = `${fmt(sailWh)} / ${fmt(sailWh / state.settings.voltage)} Ah`;
       $('#invStandbyWh').textContent = `${fmt(standbyWhDay)}`;
-      $('#whDay').textContent = fmt(whDayTotal);
-      $('#ahDay').textContent = fmt(ahDayTotal);
-      $('#tripWhAh').textContent = `${fmt(tripWh)} / ${fmt(tripAh)}`;
-      $('#bankAh').textContent = `${fmt(withReserveAh)} / ${fmt(nameplateAh)}`;
       $('#suggestLayout').textContent = layout;
 
-      // Persist lightweight autosave
-      const autosave = { settings: state.settings, rows: state.rows };
+      // autosave
+      const autosave = { settings: state.settings, rows: state.rows, gen: state.gen };
       localStorage.setItem('boatSizerAutosave', JSON.stringify(autosave));
     }
 
@@ -491,14 +715,34 @@
       const h = Math.max(0, hours||0) * Math.max(0, duty||0) * (qty||0);
       if(h<=0) return 0;
       if(r.type==='AC'){
-        // AC → DC side energy via inverter efficiency
         if(r.entry==='W') return (r.value||0) * h / eff;
-        // entry in Amps (AC): convert to Watts via 120 V, then to DC side
         return (r.value||0) * 120 * h / eff;
       } else {
-        if(r.entry==='W') return (r.value||0) * h; // DC watts × hours
-        return (r.value||0) * v * h; // DC amps × V × hours → Wh
+        if(r.entry==='W') return (r.value||0) * h;
+        return (r.value||0) * v * h;
       }
+    }
+
+    // Generation row energy (Wh/day) at DC bus
+    function genRowWh(g, settings){
+      const v = settings.voltage;
+      if(g.type==='Solar'){
+        const panelW = g.a||0, panels = g.b||0, sunHrs = g.c||0, derate = clamp(g.d||0,0,100)/100, ctrlEff = clamp(g.e||96,0,100)/100;
+        return panelW * panels * sunHrs * (1-derate) * ctrlEff;
+      }
+      if(g.type==='Wind'){
+        const ratedW = g.a||0, cap = clamp(g.b||0,0,100)/100, hrs = g.hours||0;
+        return ratedW * cap * hrs;
+      }
+      if(g.type==='Alternator'){
+        const amps = g.a||0, hrs = g.hours||0;
+        return amps * v * hrs;
+      }
+      if(g.type==='AC Charger'){
+        const dcA = g.a||0, eff = clamp(g.b||92,0,100)/100, hrs = g.hours||0;
+        return dcA * v * hrs * eff;
+      }
+      return 0;
     }
 
     function fmt(x){
@@ -508,7 +752,7 @@
       return Math.round(x).toLocaleString();
     }
 
-    // CSV Export
+    // CSV Export (loads table + summaries)
     function exportCSV(){
       const headers = ['Name','Category','Type','Entry','Value','Hours_Anchor','Hours_Underway','Duty_%','Qty'];
       const rows = state.rows.map(r=>[
@@ -517,12 +761,16 @@
       const totals = [
         [],
         ['Summary','','','',''],
-        ['Wh/day', '', '', '', whDayText()],
-        ['Ah/day', '', '', '', ahDayText()],
-        ['Trip Wh', '', '', '', tripWhText()],
-        ['Trip Ah', '', '', '', tripAhText()],
-        ['Usable Ah needed', '', '', '', usableAhText()],
-        ['Nameplate Ah (bank)', '', '', '', nameplateAhText()],
+        ['Loads Wh/day', '', '', '', $('#whDay').textContent],
+        ['Loads Ah/day', '', '', '', $('#ahDay').textContent],
+        ['Gen Wh/day', '', '', '', $('#genWhDay').textContent],
+        ['Gen Ah/day', '', '', '', $('#genAhDay').textContent],
+        ['Net Wh/day', '', '', '', $('#netWhDay').textContent],
+        ['Net Ah/day', '', '', '', $('#netAhDay').textContent],
+        ['Trip Wh (loads)', '', '', '', $('#tripWhAh').textContent.split('/')[0].trim()],
+        ['Trip Ah (loads)', '', '', '', $('#tripWhAh').textContent.split('/')[1].trim()],
+        ['Usable Ah needed', '', '', '', $('#bankAh').textContent.split('/')[0].trim()],
+        ['Nameplate Ah (bank)', '', '', '', $('#bankAh').textContent.split('/')[1].trim()],
       ];
       const csv = [headers, ...rows, ...totals]
         .map(r=>r.map(v=>String(v??'').replace(/"/g,'""')).map(v=>`"${v}"`).join(','))
@@ -532,17 +780,11 @@
       const a = document.createElement('a'); a.href=url; a.download='boat-battery-loads.csv'; a.click(); URL.revokeObjectURL(url);
     }
 
-    function whDayText(){ return $('#whDay').textContent }
-    function ahDayText(){ return $('#ahDay').textContent }
-    function tripWhText(){ return $('#tripWhAh').textContent.split('/')[0].trim() }
-    function tripAhText(){ return $('#tripWhAh').textContent.split('/')[1].trim() }
-    function usableAhText(){ return $('#bankAh').textContent.split('/')[0].trim() }
-    function nameplateAhText(){ return $('#bankAh').textContent.split('/')[1].trim() }
-
     // Load autosave on start
     (function(){
       const raw = localStorage.getItem('boatSizerAutosave');
       if(raw){ try{ loadState(JSON.parse(raw)); }catch(e){} }
+      recalc();
     })();
 
   </script>
