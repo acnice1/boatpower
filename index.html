@@ -87,6 +87,8 @@
       a[href]:after{content:''}
     }
   </style>
+  <!-- Optional: Chart.js for Reports tab (fallback to tables if blocked) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
@@ -182,6 +184,7 @@
         <div class="tabs no-print" role="tablist" aria-label="Energy tabs">
           <div id="tab-loads" class="tab active" role="tab" aria-controls="pane-loads" aria-selected="true">Loads</div>
           <div id="tab-gen" class="tab" role="tab" aria-controls="pane-gen" aria-selected="false">Generation & Charging</div>
+          <div id="tab-reports" class="tab" role="tab" aria-controls="pane-reports" aria-selected="false">Reports</div>
         </div>
 
         <div class="tabpanes">
@@ -292,6 +295,27 @@
 
             <div class="foot">
               Solar uses (Panel W × Panels × Sun Hrs × (1−Derate%) × Controller Eff%). Wind uses (Rated W × Capacity % × Hours). Alternator uses (DC A × V × Hours). AC Charger uses (DC A × V × Hours × Eff%).
+            </div>
+          </div>
+
+          <!-- REPORTS pane -->
+          <div id="pane-reports" class="pane" role="tabpanel" aria-labelledby="tab-reports">
+            <div class="note hide-print" style="margin-bottom:10px">Positive bars = Generation, negative bars = Consumption; Net can be above/below zero. Line shows cumulative Consumption over trip.</div>
+
+            <div class="card" style="margin-bottom:16px;padding:12px">
+              <h3 style="margin:0 0 8px">Generation vs Consumption vs Net</h3>
+              <div style="height:240px">
+                <canvas id="reportsBar" height="200"></canvas>
+              </div>
+              <div id="reportsBarFallback" style="display:none"></div>
+            </div>
+
+            <div class="card" style="padding:12px">
+              <h3 style="margin:0 0 8px">Cumulative Consumption Over Trip</h3>
+              <div style="height:240px">
+                <canvas id="reportsLine" height="200"></canvas>
+              </div>
+              <div id="reportsLineFallback" style="display:none"></div>
             </div>
           </div>
         </div>
@@ -416,6 +440,10 @@
     const paneLoads = $('#pane-loads');
     const paneGen = $('#pane-gen');
 
+    // Reports refs
+    const tabReports = $('#tab-reports');
+    const paneReports = $('#pane-reports');
+
     const genType = $('#gen-type');
     const genName = $('#gen-name');
     const genFields = $('#gen-fields');
@@ -474,8 +502,17 @@
       if(confirm('Clear all rows and reset settings?')){
         state.rows=[]; tbody.innerHTML='';
         state.gen=[]; genBody.innerHTML='';
-        // default loads
-        ['Anchor Light (LED)','Chartplotter/MFD'].forEach(n=>{ const it = LIB.find(x=>x.name===n); if(it) addRow({...it});});
+        // default loads (expanded)
+        [
+          'Anchor Light (LED)',
+          'Running/Nav Lights (LED set)',
+          'Chartplotter/MFD',
+          'Depth/Wind (avg)',
+          'Cabin Fan',
+          'Stereo (avg listening)',
+          'Laptop (USB-PD 65 W)',
+          'Fridge (60 W @ 35% duty)'
+        ].forEach(n=>{ const it = LIB.find(x=>x.name===n); if(it) addRow({...it});});
         // default generation
         setGenType('Solar');
         genName.value = 'Solar: 200 W × 2';
@@ -499,15 +536,25 @@
       if(which==='loads'){
         tabLoads.classList.add('active'); tabLoads.setAttribute('aria-selected','true');
         tabGen.classList.remove('active'); tabGen.setAttribute('aria-selected','false');
-        paneLoads.classList.add('active'); paneGen.classList.remove('active');
-      } else {
+        tabReports.classList.remove('active'); tabReports.setAttribute('aria-selected','false');
+        paneLoads.classList.add('active'); paneGen.classList.remove('active'); paneReports.classList.remove('active');
+      } else if(which==='gen'){
         tabGen.classList.add('active'); tabGen.setAttribute('aria-selected','true');
         tabLoads.classList.remove('active'); tabLoads.setAttribute('aria-selected','false');
-        paneGen.classList.add('active'); paneLoads.classList.remove('active');
+        tabReports.classList.remove('active'); tabReports.setAttribute('aria-selected','false');
+        paneGen.classList.add('active'); paneLoads.classList.remove('active'); paneReports.classList.remove('active');
+      } else if(which==='reports'){
+        tabReports.classList.add('active'); tabReports.setAttribute('aria-selected','true');
+        tabLoads.classList.remove('active'); tabLoads.setAttribute('aria-selected','false');
+        tabGen.classList.remove('active'); tabGen.setAttribute('aria-selected','false');
+        paneReports.classList.add('active'); paneLoads.classList.remove('active'); paneGen.classList.remove('active');
+        // ensure fresh render on open
+        recalc();
       }
     }
     tabLoads.addEventListener('click', ()=>setTab('loads'));
     tabGen.addEventListener('click', ()=>setTab('gen'));
+    tabReports.addEventListener('click', ()=>setTab('reports'));
 
     // ---------- Loads table ----------
     function addRow(row){
@@ -571,7 +618,6 @@
       renderGenFields(type);
     }
     function renderGenFields(type){
-      // Render correct labeled inputs for chosen type
       if(type==='Solar'){
         genFields.innerHTML = `
           <div class="pair"><label for="field-panelW">Panel wattage (W)</label><input id="field-panelW" type="number" min="0" step="1" value="200"></div>
@@ -580,7 +626,7 @@
           <div class="pair"><label for="field-derate">Derate (%)</label><input id="field-derate" type="number" min="0" max="100" step="1" value="15"></div>
           <div class="pair"><label for="field-ctrl">Controller eff (%)</label><input id="field-ctrl" type="number" min="0" max="100" step="1" value="96"></div>
         `;
-        genHours.value = 4.5; // align default
+        genHours.value = 4.5;
       }
       if(type==='Wind'){
         genFields.innerHTML = `
@@ -734,7 +780,6 @@
             <span class="link danger" data-act="del">Delete</span>
           </td>
         `;
-        // row click to edit
         tr.addEventListener('click', (ev)=>{
           const act = ev.target?.dataset?.act;
           if(act==='edit'){ editGen(e.id); }
@@ -801,7 +846,6 @@
 
     // ---------- Recalc ----------
     function recalc(){
-      // settings
       state.settings = {
         voltage: +voltage.value,
         chemistry: chemistry.value,
@@ -848,7 +892,7 @@
       const modules100 = Math.max(1, Math.ceil(nameplateAh/100));
       const layout = `${modules100} × 100 Ah @ ${state.settings.voltage} V`;
 
-      // KPI coloring (based on visible unit)
+      // KPI coloring
       const netWhEl = $('#netWhDay').closest('.kpi');
       const netAhEl = $('#netAhDay').closest('.kpi');
       [netWhEl, netAhEl].forEach(el=> el.classList.remove('ok','warn','bad'));
@@ -859,12 +903,12 @@
       else if(Math.abs(netMetric) < threshold) targetEl.classList.add('warn');
       else targetEl.classList.add('bad');
 
-      // Paired KPIs (show only selected unit)
+      // Paired KPIs
       setKpiPair('whDay','ahDay',whDayTotal,ahDayTotal);
       setKpiPair('genWhDay','genAhDay',genWhDay,genAhDay);
       setKpiPair('netWhDay','netAhDay',netWh,netAh);
 
-      // Singles that need unitized text
+      // Singles
       $('#tripWhAh').textContent = (unitMode==='Wh') ? `${fmt(tripWh)} Wh` : `${fmt(tripAh)} Ah`;
       $('#bankAh').textContent = (unitMode==='Wh')
         ? `${fmt(withReserveWh)} Wh / ${fmt(nameplateWh)} Wh`
@@ -884,8 +928,23 @@
       const autosave = { settings: state.settings, rows: state.rows, gen: state.gen };
       localStorage.setItem('boatSizerAutosave', JSON.stringify(autosave));
 
-      // refresh gen list numbers (in case voltage changed)
+      // refresh gen list numbers
       renderGenList();
+
+      // ===== Reports data feed (per-day arrays) =====
+      const d = state.settings.days;
+      const labels = Array.from({length:d}, (_,i)=> `Day ${i+1}`);
+      const generationWh = Array.from({length:d}, ()=> genWhDay);
+      const consumptionWh = Array.from({length:d}, ()=> whDayTotal);
+
+      if (typeof window.renderReports === 'function') {
+        window.renderReports({
+          labels,
+          generationWh,
+          consumptionWh,
+          systemVoltage: state.settings.voltage
+        });
+      }
     }
 
     function rowWh(r, hours, duty, qty){
@@ -907,7 +966,6 @@
       const rows = state.rows.map(r=>[
         r.name, r.category, r.type, r.entry, r.value, r.hAnchor, r.hSail, r.duty, r.qty
       ]);
-      const unitForCsv = unitMode==='Wh' ? 'Wh/day' : 'Ah/day';
       const netText = unitMode==='Wh' ? $('#netWhDay').textContent : $('#netAhDay').textContent;
 
       const totals = [
@@ -935,8 +993,17 @@
       if(raw){
         try{ loadState(JSON.parse(raw)); recalc(); return; }catch(e){}
       }
-      // defaults if no autosave
-      ['Anchor Light (Incandescent 25 W)','Chartplotter/MFD','Cabin Fan','Stereo (avg listening)','Laptop (USB-PD 65 W)'].forEach(n=>{
+      // defaults if no autosave (expanded)
+      [
+        'Anchor Light (LED)',
+        'Running/Nav Lights (LED set)',
+        'Chartplotter/MFD',
+        'Depth/Wind (avg)',
+        'Cabin Fan',
+        'Stereo (avg listening)',
+        'Laptop (USB-PD 65 W)',
+        'Fridge (60 W @ 35% duty)'
+      ].forEach(n=>{
         const it = LIB.find(x=>x.name===n); if(it) addRow({...it});
       });
       genName.value = 'Solar: 200 W × 2';
@@ -969,10 +1036,161 @@
         (data.gen||[]).forEach(e=>{ state.gen.push(e); });
         renderGenList();
 
-        // unitMode is not persisted previously; default to Wh
         unitMode = 'Wh'; $('#unitWh').checked = true; $('#unitAh').checked = false;
       }catch(e){ console.error(e); }
     }
+
+    /* ===== Reports Tab Renderer ===== */
+    let reportsBarChart = null;
+    let reportsLineChart = null;
+
+    function updateReportsFromModel(model) {
+      if (!model || !Array.isArray(model.labels)) return;
+
+      const labels = model.labels.slice();
+      const gen = (model.generationWh || []).map(x => +x || 0);
+      const use = (model.consumptionWh || []).map(x => +x || 0);
+      const len = Math.max(labels.length, gen.length, use.length);
+
+      while (labels.length < len) labels.push(String(labels.length));
+      while (gen.length < len) gen.push(0);
+      while (use.length < len) use.push(0);
+
+      const net = gen.map((g, i) => g - use[i]);
+      const cumulativeUse = [];
+      use.reduce((acc, v, i) => (cumulativeUse[i] = acc + v, acc + v), 0);
+
+      const hasChart = typeof window.Chart !== 'undefined';
+      renderReportsBar(labels, gen, use, net, hasChart);
+      renderReportsLine(labels, cumulativeUse, hasChart);
+    }
+
+    function renderReportsBar(labels, gen, use, net, hasChart) {
+      const canvas = document.getElementById('reportsBar');
+      const fallback = document.getElementById('reportsBarFallback');
+      if (!canvas) return;
+
+      if (hasChart) {
+        fallback.style.display = 'none';
+        canvas.style.display = '';
+
+        if (reportsBarChart) {
+          try { reportsBarChart.destroy(); } catch {}
+          reportsBarChart = null;
+        }
+
+        const negUse = use.map(v => -v);
+
+        reportsBarChart = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Generation (Wh)', data: gen, borderWidth: 1 },
+              { label: 'Consumption (Wh)', data: negUse, borderWidth: 1 },
+              { label: 'Net (Wh)', data: net, borderWidth: 1 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { grid: { display: false } },
+              y: { beginAtZero: true, title: { display: true, text: 'Watt-hours (Wh)' } }
+            },
+            plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } }
+          }
+        });
+      } else {
+        canvas.style.display = 'none';
+        fallback.style.display = '';
+        fallback.innerHTML = buildBarFallbackTable(labels, gen, use, net);
+      }
+    }
+
+    function renderReportsLine(labels, cumulativeUse, hasChart) {
+      const canvas = document.getElementById('reportsLine');
+      const fallback = document.getElementById('reportsLineFallback');
+      if (!canvas) return;
+
+      if (hasChart) {
+        fallback.style.display = 'none';
+        canvas.style.display = '';
+
+        if (reportsLineChart) {
+          try { reportsLineChart.destroy(); } catch {}
+          reportsLineChart = null;
+        }
+
+        reportsLineChart = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: { labels, datasets: [{ label: 'Cumulative Consumption (Wh)', data: cumulativeUse, borderWidth: 2, pointRadius: 0, tension: 0.25 }] },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { grid: { display: false } },
+              y: { beginAtZero: true, title: { display: true, text: 'Watt-hours (Wh)' } }
+            },
+            plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } }
+          }
+        });
+      } else {
+        canvas.style.display = 'none';
+        fallback.style.display = '';
+        fallback.innerHTML = buildLineFallbackTable(labels, cumulativeUse);
+      }
+    }
+
+    function buildBarFallbackTable(labels, gen, use, net) {
+      const rows = labels.map((l, i) => `
+        <tr>
+          <td>${escapeHtml(l)}</td>
+          <td style="text-align:right">${fmt(gen[i])}</td>
+          <td style="text-align:right">${fmt(use[i])}</td>
+          <td style="text-align:right">${fmt(net[i])}</td>
+        </tr>`).join('');
+      return `
+        <div class="muted" style="margin-bottom:8px">Chart library not found; showing data table instead.</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:6px;border-bottom:1px solid var(--line, #ccc)">Step</th>
+              <th style="text-align:right;padding:6px;border-bottom:1px solid var(--line, #ccc)">Generation (Wh)</th>
+              <th style="text-align:right;padding:6px;border-bottom:1px solid var(--line, #ccc)">Consumption (Wh)</th>
+              <th style="text-align:right;padding:6px;border-bottom:1px solid var(--line, #ccc)">Net (Wh)</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    function buildLineFallbackTable(labels, cumulative) {
+      const rows = labels.map((l, i) => `
+        <tr>
+          <td>${escapeHtml(l)}</td>
+          <td style="text-align:right">${fmt(cumulative[i])}</td>
+        </tr>`).join('');
+      return `
+        <div class="muted" style="margin-bottom:8px">Chart library not found; showing data table instead.</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:6px;border-bottom:1px solid var(--line, #ccc)">Step</th>
+              <th style="text-align:right;padding:6px;border-bottom:1px solid var(--line, #ccc)">Cumulative Consumption (Wh)</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    // Public adapter
+    window.renderReports = function({ labels, generationWh, consumptionWh, systemVoltage }) {
+      updateReportsFromModel({ labels, generationWh, consumptionWh, systemVoltage });
+    };
+
+    // Ensure initial reports render even if first recalc happened earlier
+    setTimeout(() => recalc(), 0);
   </script>
 </body>
 </html>
