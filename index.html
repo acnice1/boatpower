@@ -325,10 +325,10 @@
         <div class="no-print" style="margin:10px 0 12px; display:flex; align-items:center; gap:12px">
           <span class="note">Display units:</span>
           <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;">
-            <input type="radio" name="unitMode" value="Wh" id="unitWh" checked /> Wh
+            <input type="radio" name="unitMode" value="Wh" id="unitWh" /> Wh
           </label>
           <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;">
-            <input type="radio" name="unitMode" value="Ah" id="unitAh" /> Ah
+            <input type="radio" name="unitMode" value="Ah" id="unitAh" checked /> Ah
           </label>
           <span class="note">Affects the KPI cards below.</span>
         </div>
@@ -418,8 +418,8 @@
     };
     const newId = ()=> Math.random().toString(36).slice(2,10);
 
-    // Unit toggle (Wh or Ah) — default Wh
-    let unitMode = 'Wh';
+    // Unit toggle (Wh or Ah) — default Ah
+    let unitMode = 'Ah';
 
     // ---------- Settings refs ----------
     const voltage = $('#voltage');
@@ -523,7 +523,7 @@
 
         // reset settings
         voltage.value=12; chemistry.value='LFP'; dod.value=DEFAULTS.dodByChem['LFP']; reserve.value=20; days.value=2; invEff.value=90; invStandby.value=6; derate.value=0;
-        unitMode = 'Wh'; $('#unitWh').checked = true; $('#unitAh').checked = false;
+        unitMode = 'Ah'; $('#unitWh').checked = false; $('#unitAh').checked = true;
         recalc();
       }
     });
@@ -1053,8 +1053,8 @@
         (data.gen||[]).forEach(e=>{ state.gen.push(e); });
         renderGenList();
 
-        // unitMode is not persisted previously; default to Wh
-        unitMode = 'Wh'; $('#unitWh').checked = true; $('#unitAh').checked = false;
+        // unitMode is not persisted previously; default to Ah
+        unitMode = 'Ah'; $('#unitWh').checked = false; $('#unitAh').checked = true;
       }catch(e){ console.error(e); }
     }
 
