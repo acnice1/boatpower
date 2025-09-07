@@ -684,7 +684,6 @@
       'Cabin Fan',
       'Stereo (avg listening)',
       'Laptop (USB-PD 65 W)'
-      //'Fridge (60 W @ 35% duty)'
       ];
       const existing=new Set(state.rows.map(r=>r.name));
       for(const n of wanted){ if(!existing.has(n)){ const it=LIB.find(x=>x.name===n); if(it) addRow({...it}); } }
