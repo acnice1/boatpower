@@ -184,6 +184,7 @@
         <div class="tabs no-print" role="tablist" aria-label="Energy tabs">
           <div id="tab-loads" class="tab active" role="tab" aria-controls="pane-loads" aria-selected="true">Loads</div>
           <div id="tab-gen" class="tab" role="tab" aria-controls="pane-gen" aria-selected="false">Generation & Charging</div>
+          <!-- NEW: Reports tab button -->
           <div id="tab-reports" class="tab" role="tab" aria-controls="pane-reports" aria-selected="false">Reports</div>
         </div>
 
@@ -298,7 +299,7 @@
             </div>
           </div>
 
-          <!-- REPORTS pane -->
+          <!-- NEW: REPORTS pane -->
           <div id="pane-reports" class="pane" role="tabpanel" aria-labelledby="tab-reports">
             <div class="note hide-print" style="margin-bottom:10px">Positive bars = Generation, negative bars = Consumption; Net can be above/below zero. Line shows cumulative Consumption over trip.</div>
 
@@ -440,7 +441,7 @@
     const paneLoads = $('#pane-loads');
     const paneGen = $('#pane-gen');
 
-    // Reports refs
+    // NEW: Reports refs
     const tabReports = $('#tab-reports');
     const paneReports = $('#pane-reports');
 
@@ -500,19 +501,14 @@
     });
     $('#resetAll').addEventListener('click', ()=>{
       if(confirm('Clear all rows and reset settings?')){
+        localStorage.removeItem('boatSizerAutosaveV2'); // ensure clean reset
+
         state.rows=[]; tbody.innerHTML='';
         state.gen=[]; genBody.innerHTML='';
-        // default loads (expanded)
-        [
-          'Anchor Light (LED)',
-          'Running/Nav Lights (LED set)',
-          'Chartplotter/MFD',
-          'Depth/Wind (avg)',
-          'Cabin Fan',
-          'Stereo (avg listening)',
-          'Laptop (USB-PD 65 W)',
-          'Fridge (60 W @ 35% duty)'
-        ].forEach(n=>{ const it = LIB.find(x=>x.name===n); if(it) addRow({...it});});
+
+        // default loads (idempotent)
+        seedDefaults();
+
         // default generation
         setGenType('Solar');
         genName.value = 'Solar: 200 W × 2';
@@ -524,6 +520,7 @@
         genHours.value = 4.5;
         genQty.value = 1;
         onAddGen();
+
         // reset settings
         voltage.value=12; chemistry.value='LFP'; dod.value=DEFAULTS.dodByChem['LFP']; reserve.value=20; days.value=2; invEff.value=90; invStandby.value=6; derate.value=0;
         unitMode = 'Wh'; $('#unitWh').checked = true; $('#unitAh').checked = false;
@@ -554,6 +551,7 @@
     }
     tabLoads.addEventListener('click', ()=>setTab('loads'));
     tabGen.addEventListener('click', ()=>setTab('gen'));
+    // NEW: Reports tab click
     tabReports.addEventListener('click', ()=>setTab('reports'));
 
     // ---------- Loads table ----------
@@ -618,6 +616,7 @@
       renderGenFields(type);
     }
     function renderGenFields(type){
+      // Render correct labeled inputs for chosen type
       if(type==='Solar'){
         genFields.innerHTML = `
           <div class="pair"><label for="field-panelW">Panel wattage (W)</label><input id="field-panelW" type="number" min="0" step="1" value="200"></div>
@@ -626,7 +625,7 @@
           <div class="pair"><label for="field-derate">Derate (%)</label><input id="field-derate" type="number" min="0" max="100" step="1" value="15"></div>
           <div class="pair"><label for="field-ctrl">Controller eff (%)</label><input id="field-ctrl" type="number" min="0" max="100" step="1" value="96"></div>
         `;
-        genHours.value = 4.5;
+        genHours.value = 4.5; // align default
       }
       if(type==='Wind'){
         genFields.innerHTML = `
@@ -780,6 +779,7 @@
             <span class="link danger" data-act="del">Delete</span>
           </td>
         `;
+        // row click to edit
         tr.addEventListener('click', (ev)=>{
           const act = ev.target?.dataset?.act;
           if(act==='edit'){ editGen(e.id); }
@@ -846,6 +846,7 @@
 
     // ---------- Recalc ----------
     function recalc(){
+      // settings
       state.settings = {
         voltage: +voltage.value,
         chemistry: chemistry.value,
@@ -892,7 +893,7 @@
       const modules100 = Math.max(1, Math.ceil(nameplateAh/100));
       const layout = `${modules100} × 100 Ah @ ${state.settings.voltage} V`;
 
-      // KPI coloring
+      // KPI coloring (based on visible unit)
       const netWhEl = $('#netWhDay').closest('.kpi');
       const netAhEl = $('#netAhDay').closest('.kpi');
       [netWhEl, netAhEl].forEach(el=> el.classList.remove('ok','warn','bad'));
@@ -903,12 +904,12 @@
       else if(Math.abs(netMetric) < threshold) targetEl.classList.add('warn');
       else targetEl.classList.add('bad');
 
-      // Paired KPIs
+      // Paired KPIs (show only selected unit)
       setKpiPair('whDay','ahDay',whDayTotal,ahDayTotal);
       setKpiPair('genWhDay','genAhDay',genWhDay,genAhDay);
       setKpiPair('netWhDay','netAhDay',netWh,netAh);
 
-      // Singles
+      // Singles that need unitized text
       $('#tripWhAh').textContent = (unitMode==='Wh') ? `${fmt(tripWh)} Wh` : `${fmt(tripAh)} Ah`;
       $('#bankAh').textContent = (unitMode==='Wh')
         ? `${fmt(withReserveWh)} Wh / ${fmt(nameplateWh)} Wh`
@@ -924,11 +925,11 @@
         : `${fmt(standbyWhDay / state.settings.voltage)} Ah/day`;
       $('#suggestLayout').textContent = layout;
 
-      // autosave
+      // autosave (V2 key)
       const autosave = { settings: state.settings, rows: state.rows, gen: state.gen };
-      localStorage.setItem('boatSizerAutosave', JSON.stringify(autosave));
+      localStorage.setItem('boatSizerAutosaveV2', JSON.stringify(autosave));
 
-      // refresh gen list numbers
+      // refresh gen list numbers (in case voltage changed)
       renderGenList();
 
       // ===== Reports data feed (per-day arrays) =====
@@ -986,15 +987,9 @@
       const a = document.createElement('a'); a.href=url; a.download='boat-battery-loads.csv'; a.click(); URL.revokeObjectURL(url);
     }
 
-    // ---------- Load autosave on start + sensible defaults ----------
-    (function(){
-      setGenType('Solar'); // render initial fields
-      const raw = localStorage.getItem('boatSizerAutosave');
-      if(raw){
-        try{ loadState(JSON.parse(raw)); recalc(); return; }catch(e){}
-      }
-      // defaults if no autosave (expanded)
-      [
+    // === Default seeding (idempotent) ===
+    function seedDefaults() {
+      const wanted = [
         'Anchor Light (LED)',
         'Running/Nav Lights (LED set)',
         'Chartplotter/MFD',
@@ -1003,9 +998,30 @@
         'Stereo (avg listening)',
         'Laptop (USB-PD 65 W)',
         'Fridge (60 W @ 35% duty)'
-      ].forEach(n=>{
-        const it = LIB.find(x=>x.name===n); if(it) addRow({...it});
-      });
+      ];
+      const existing = new Set(state.rows.map(r => r.name));
+      for (const n of wanted) {
+        if (!existing.has(n)) {
+          const it = LIB.find(x => x.name === n);
+          if (it) addRow({ ...it });
+        }
+      }
+    }
+
+    // ---------- Load autosave on start + sensible defaults ----------
+    (function(){
+      setGenType('Solar'); // render initial fields
+
+      // Use versioned autosave to avoid mixing with old data
+      const raw = localStorage.getItem('boatSizerAutosaveV2');
+      if(raw){
+        try{ loadState(JSON.parse(raw)); recalc(); return; }catch(e){ console.warn('autosave v2 parse failed', e); }
+      }
+
+      // No valid autosave -> seed defaults idempotently
+      seedDefaults();
+
+      // Default generation
       genName.value = 'Solar: 200 W × 2';
       $('#field-panelW').value = 200;
       $('#field-panels').value = 2;
@@ -1014,6 +1030,7 @@
       $('#field-ctrl').value = 96;
       genHours.value = 4.5;
       onAddGen();
+
       recalc();
     })();
 
@@ -1036,11 +1053,12 @@
         (data.gen||[]).forEach(e=>{ state.gen.push(e); });
         renderGenList();
 
+        // unitMode is not persisted previously; default to Wh
         unitMode = 'Wh'; $('#unitWh').checked = true; $('#unitAh').checked = false;
       }catch(e){ console.error(e); }
     }
 
-    /* ===== Reports Tab Renderer ===== */
+    /* ===== Reports Tab Renderer (non-intrusive) ===== */
     let reportsBarChart = null;
     let reportsLineChart = null;
 
@@ -1057,10 +1075,12 @@
       while (use.length < len) use.push(0);
 
       const net = gen.map((g, i) => g - use[i]);
+
       const cumulativeUse = [];
       use.reduce((acc, v, i) => (cumulativeUse[i] = acc + v, acc + v), 0);
 
       const hasChart = typeof window.Chart !== 'undefined';
+
       renderReportsBar(labels, gen, use, net, hasChart);
       renderReportsLine(labels, cumulativeUse, hasChart);
     }
