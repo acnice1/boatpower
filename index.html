@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -74,6 +74,10 @@
     .muted{color:var(--muted);font-size:12px}
     .danger{color:var(--bad)}
     .link{color:var(--accent);cursor:pointer}
+
+    /* Toggle visibility helper */
+    .hidden{display:none!important}
+
     @media (max-width:800px){.gen-form{grid-template-columns:1fr}}
     @media print{
       header, .toolbar, .tabs, .libRow, .foot, .note.hide-print, .no-print{display:none!important}
@@ -292,27 +296,43 @@
           </div>
         </div>
 
+        <!-- ===== Unit Toggle (Wh / Ah) ===== -->
+        <div class="no-print" style="margin:10px 0 12px; display:flex; align-items:center; gap:12px">
+          <span class="note">Display units:</span>
+          <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;">
+            <input type="radio" name="unitMode" value="Wh" id="unitWh" checked /> Wh
+          </label>
+          <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;">
+            <input type="radio" name="unitMode" value="Ah" id="unitAh" /> Ah
+          </label>
+          <span class="note">Affects the KPI cards below.</span>
+        </div>
+
         <!-- KPIs -->
         <div class="summary" style="margin-top:12px">
-          <div class="kpi"><div class="label">LOADS — DC + AC (after inverter) — Wh/day</div><div id="whDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">LOADS — Ah/day @ <span id="vLabel">12</span> V</div><div id="ahDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">GEN — Wh/day</div><div id="genWhDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">GEN — Ah/day @ <span id="vLabel2">12</span> V</div><div id="genAhDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">LOADS — DC + AC (after inverter)</div><div id="whDay" class="value">0</div></div>
+          <div class="kpi hidden"><div class="label">LOADS — DC + AC (after inverter)</div><div id="ahDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">GEN — Total</div><div id="genWhDay" class="value">0</div></div>
+          <div class="kpi hidden"><div class="label">GEN — Total</div><div id="genAhDay" class="value">0</div></div>
         </div>
 
         <div class="summary" style="margin-top:6px">
-          <div class="kpi"><div class="label">NET (Gen − Loads) — Wh/day</div><div id="netWhDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">NET — Ah/day</div><div id="netAhDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">Trip energy — Wh / Ah (loads only)</div><div id="tripWhAh" class="value">0 / 0</div></div>
-          <div class="kpi"><div class="label">Battery required — Usable / Nameplate (Ah)</div><div id="bankAh" class="value">0 / 0</div></div>
+          <div class="kpi"><div class="label">NET (Gen − Loads)</div><div id="netWhDay" class="value">0</div></div>
+          <div class="kpi hidden"><div class="label">NET (Gen − Loads)</div><div id="netAhDay" class="value">0</div></div>
+          <div class="kpi"><div class="label">Trip energy (loads only)</div><div id="tripWhAh" class="value">0</div></div>
+          <div class="kpi"><div class="label">Battery required — Usable / Nameplate</div><div id="bankAh" class="value">0 / 0</div></div>
         </div>
 
         <div class="summary" style="margin-top:6px">
-          <div class="kpi"><div class="label">Anchor — Wh / Ah per day</div><div id="anchorWhAh" class="value">0 / 0</div></div>
-          <div class="kpi"><div class="label">Underway — Wh / Ah per day</div><div id="sailWhAh" class="value">0 / 0</div></div>
-          <div class="kpi"><div class="label">Est. inverter standby Wh/day</div><div id="invStandbyWh" class="value">0</div></div>
+          <div class="kpi"><div class="label">Anchor — per day</div><div id="anchorWhAh" class="value">0</div></div>
+          <div class="kpi"><div class="label">Underway — per day</div><div id="sailWhAh" class="value">0</div></div>
+          <div class="kpi"><div class="label">Est. inverter standby</div><div id="invStandbyWh" class="value">0</div></div>
           <div class="kpi"><div class="label">Suggested module layout</div><div id="suggestLayout" class="value">—</div></div>
         </div>
+
+        <!-- Voltage labels kept (used elsewhere) -->
+        <span id="vLabel" class="hidden">12</span>
+        <span id="vLabel2" class="hidden">12</span>
       </div>
     </section>
   </main>
@@ -373,6 +393,9 @@
     };
     const newId = ()=> Math.random().toString(36).slice(2,10);
 
+    // Unit toggle (Wh or Ah) — default Wh
+    let unitMode = 'Wh';
+
     // ---------- Settings refs ----------
     const voltage = $('#voltage');
     const chemistry = $('#chemistry');
@@ -418,6 +441,14 @@
 
     [voltage,reserve,days,invEff,invStandby,derate].forEach(el=> el.addEventListener('input', recalc));
 
+    // Unit radio listeners
+    $$('input[name="unitMode"]').forEach(r => {
+      r.addEventListener('change', (e) => {
+        unitMode = e.target.value === 'Ah' ? 'Ah' : 'Wh';
+        recalc();
+      });
+    });
+
     function refreshLib(){
       libSelect.innerHTML = LIB.map((it,i)=>`<option value="${i}">${escapeHtml(it.name)} — ${it.category}</option>`).join('');
     }
@@ -458,6 +489,7 @@
         onAddGen();
         // reset settings
         voltage.value=12; chemistry.value='LFP'; dod.value=DEFAULTS.dodByChem['LFP']; reserve.value=20; days.value=2; invEff.value=90; invStandby.value=6; derate.value=0;
+        unitMode = 'Wh'; $('#unitWh').checked = true; $('#unitAh').checked = false;
         recalc();
       }
     });
@@ -752,6 +784,21 @@
       document.body.appendChild(t); setTimeout(()=>t.remove(), 1600);
     }
 
+    // Helper: toggle paired KPI cards
+    function setKpiPair(whId, ahId, whVal, ahVal){
+      const whEl = $('#'+whId).closest('.kpi');
+      const ahEl = $('#'+ahId).closest('.kpi');
+      if(unitMode==='Wh'){
+        $('#'+whId).textContent = `${fmt(whVal)} Wh/day`;
+        whEl.classList.remove('hidden');
+        ahEl.classList.add('hidden');
+      } else {
+        $('#'+ahId).textContent = `${fmt(ahVal)} Ah/day`;
+        ahEl.classList.remove('hidden');
+        whEl.classList.add('hidden');
+      }
+    }
+
     // ---------- Recalc ----------
     function recalc(){
       // settings
@@ -796,28 +843,41 @@
       const withReserveAh = tripAh * (1 + state.settings.reserve/100);
       let nameplateAh = withReserveAh / usableDoD;
       if(state.settings.derate>0){ nameplateAh = nameplateAh / (1 - state.settings.derate/100); }
+      const withReserveWh = withReserveAh * state.settings.voltage;
+      const nameplateWh = nameplateAh * state.settings.voltage;
       const modules100 = Math.max(1, Math.ceil(nameplateAh/100));
       const layout = `${modules100} × 100 Ah @ ${state.settings.voltage} V`;
 
-      // KPI coloring
+      // KPI coloring (based on visible unit)
       const netWhEl = $('#netWhDay').closest('.kpi');
-      netWhEl.classList.remove('ok','warn','bad');
-      if(netWh > 0) netWhEl.classList.add('ok');
-      else if(Math.abs(netWh) < 200) netWhEl.classList.add('warn');
-      else netWhEl.classList.add('bad');
+      const netAhEl = $('#netAhDay').closest('.kpi');
+      [netWhEl, netAhEl].forEach(el=> el.classList.remove('ok','warn','bad'));
+      const netMetric = (unitMode==='Wh') ? netWh : netAh;
+      const threshold = (unitMode==='Wh') ? 200 : (200 / state.settings.voltage);
+      const targetEl = (unitMode==='Wh') ? netWhEl : netAhEl;
+      if(netMetric > 0) targetEl.classList.add('ok');
+      else if(Math.abs(netMetric) < threshold) targetEl.classList.add('warn');
+      else targetEl.classList.add('bad');
 
-      // Write UI
-      $('#whDay').textContent = fmt(whDayTotal);
-      $('#ahDay').textContent = fmt(ahDayTotal);
-      $('#genWhDay').textContent = fmt(genWhDay);
-      $('#genAhDay').textContent = fmt(genAhDay);
-      $('#netWhDay').textContent = fmt(netWh);
-      $('#netAhDay').textContent = fmt(netAh);
-      $('#tripWhAh').textContent = `${fmt(tripWh)} / ${fmt(tripAh)}`;
-      $('#bankAh').textContent = `${fmt(withReserveAh)} / ${fmt(nameplateAh)}`;
-      $('#anchorWhAh').textContent = `${fmt(anchorWh)} / ${fmt(anchorWh / state.settings.voltage)} Ah`;
-      $('#sailWhAh').textContent = `${fmt(sailWh)} / ${fmt(sailWh / state.settings.voltage)} Ah`;
-      $('#invStandbyWh').textContent = `${fmt(standbyWhDay)}`;
+      // Paired KPIs (show only selected unit)
+      setKpiPair('whDay','ahDay',whDayTotal,ahDayTotal);
+      setKpiPair('genWhDay','genAhDay',genWhDay,genAhDay);
+      setKpiPair('netWhDay','netAhDay',netWh,netAh);
+
+      // Singles that need unitized text
+      $('#tripWhAh').textContent = (unitMode==='Wh') ? `${fmt(tripWh)} Wh` : `${fmt(tripAh)} Ah`;
+      $('#bankAh').textContent = (unitMode==='Wh')
+        ? `${fmt(withReserveWh)} Wh / ${fmt(nameplateWh)} Wh`
+        : `${fmt(withReserveAh)} Ah / ${fmt(nameplateAh)} Ah`;
+      $('#anchorWhAh').textContent = (unitMode==='Wh')
+        ? `${fmt(anchorWh)} Wh/day`
+        : `${fmt(anchorWh / state.settings.voltage)} Ah/day`;
+      $('#sailWhAh').textContent = (unitMode==='Wh')
+        ? `${fmt(sailWh)} Wh/day`
+        : `${fmt(sailWh / state.settings.voltage)} Ah/day`;
+      $('#invStandbyWh').textContent = (unitMode==='Wh')
+        ? `${fmt(standbyWhDay)} Wh/day`
+        : `${fmt(standbyWhDay / state.settings.voltage)} Ah/day`;
       $('#suggestLayout').textContent = layout;
 
       // autosave
@@ -847,19 +907,18 @@
       const rows = state.rows.map(r=>[
         r.name, r.category, r.type, r.entry, r.value, r.hAnchor, r.hSail, r.duty, r.qty
       ]);
+      const unitForCsv = unitMode==='Wh' ? 'Wh/day' : 'Ah/day';
+      const netText = unitMode==='Wh' ? $('#netWhDay').textContent : $('#netAhDay').textContent;
+
       const totals = [
         [],
         ['Summary','','','',''],
-        ['Loads Wh/day', '', '', '', $('#whDay').textContent],
-        ['Loads Ah/day', '', '', '', $('#ahDay').textContent],
-        ['Gen Wh/day', '', '', '', $('#genWhDay').textContent],
-        ['Gen Ah/day', '', '', '', $('#genAhDay').textContent],
-        ['Net Wh/day', '', '', '', $('#netWhDay').textContent],
-        ['Net Ah/day', '', '', '', $('#netAhDay').textContent],
-        ['Trip Wh (loads)', '', '', '', $('#tripWhAh').textContent.split('/')[0].trim()],
-        ['Trip Ah (loads)', '', '', '', $('#tripWhAh').textContent.split('/')[1].trim()],
-        ['Usable Ah needed', '', '', '', $('#bankAh').textContent.split('/')[0].trim()],
-        ['Nameplate Ah (bank)', '', '', '', $('#bankAh').textContent.split('/')[1].trim()],
+        ['Loads', '', '', '', (unitMode==='Wh'? $('#whDay').textContent : $('#ahDay').textContent)],
+        ['Gen', '', '', '', (unitMode==='Wh'? $('#genWhDay').textContent : $('#genAhDay').textContent)],
+        ['Net', '', '', '', netText],
+        ['Trip (loads only)', '', '', '', $('#tripWhAh').textContent],
+        ['Usable (bank)', '', '', '', $('#bankAh').textContent.split('/')[0].trim()],
+        ['Nameplate (bank)', '', '', '', $('#bankAh').textContent.split('/')[1].trim()],
       ];
       const csv = [headers, ...rows, ...totals]
         .map(r=>r.map(v=>String(v??'').replace(/"/g,'""')).map(v=>`"${v}"`).join(','))
@@ -909,6 +968,9 @@
         genBody.innerHTML='';
         (data.gen||[]).forEach(e=>{ state.gen.push(e); });
         renderGenList();
+
+        // unitMode is not persisted previously; default to Wh
+        unitMode = 'Wh'; $('#unitWh').checked = true; $('#unitAh').checked = false;
       }catch(e){ console.error(e); }
     }
   </script>
