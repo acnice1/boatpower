@@ -75,6 +75,17 @@
 
     .hidden{display:none!important}
 
+    /* ====== New: Bottom family headers & group wrappers ====== */
+    .pillhead{display:flex;align-items:center;gap:10px;margin:14px 0 8px}
+    .pill--loads{background:rgba(96,165,250,.18);border-color:rgba(96,165,250,.35);color:#cfe6ff}
+    .pill--gen{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.35);color:#d9f7e5}
+    .pill--balance{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.35);color:#ffe7c2}
+    .pill--recs{background:rgba(148,163,184,.18);border-color:rgba(148,163,184,.35);color:#e6edf3}
+
+    .family{border:1px solid var(--line);border-radius:14px;padding:10px;background:#0c1626}
+    .family + .family{margin-top:10px}
+    .summary.compact{margin:0}
+
     @media (max-width:800px){.gen-form{grid-template-columns:1fr}}
     @media print{
       header, .toolbar, .tabs, .libRow, .foot, .note.hide-print, .no-print{display:none!important}
@@ -420,7 +431,7 @@
           </div>
         </div>
 
-        <!-- Unit Toggle -->
+        <!-- Unit Toggle (unchanged) -->
         <div class="no-print" style="margin:10px 0 12px; display:flex; align-items:center; gap:12px">
           <span class="note">Display units:</span>
           <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;">
@@ -432,28 +443,53 @@
           <span class="note">Affects KPIs and Reports.</span>
         </div>
 
-        <!-- KPIs -->
-        <div class="summary" style="margin-top:12px">
-          <div class="kpi"><div class="label">LOADS — DC + AC (after inverter)</div><div id="whDay" class="value">0</div></div>
-          <div class="kpi hidden"><div class="label">LOADS — DC + AC (after inverter)</div><div id="ahDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">GEN — Total</div><div id="genWhDay" class="value">0</div></div>
-          <div class="kpi hidden"><div class="label">GEN — Total</div><div id="genAhDay" class="value">0</div></div>
+        <!-- ===== NEW: Cognitively grouped bottom outputs ===== -->
+
+        <!-- LOADS -->
+        <div class="pillhead"><span class="pill pill--loads">LOADS</span><span class="note">Anchor / Underway and total daily consumption</span></div>
+        <div class="family">
+          <div class="summary compact">
+            <div class="kpi"><div class="label">LOADS — DC + AC (after inverter)</div><div id="whDay" class="value">0</div></div>
+            <div class="kpi hidden"><div class="label">LOADS — DC + AC (after inverter)</div><div id="ahDay" class="value">0</div></div>
+            <div class="kpi"><div class="label">Anchor — per day</div><div id="anchorWhAh" class="value">0</div></div>
+            <div class="kpi"><div class="label">Underway — per day</div><div id="sailWhAh" class="value">0</div></div>
+            <div class="kpi"><div class="label">Est. inverter standby</div><div id="invStandbyWh" class="value">0</div></div>
+          </div>
         </div>
 
-        <div class="summary" style="margin-top:6px">
-          <div class="kpi"><div class="label">NET (Gen − Loads)</div><div id="netWhDay" class="value">0</div></div>
-          <div class="kpi hidden"><div class="label">NET (Gen − Loads)</div><div id="netAhDay" class="value">0</div></div>
-          <div class="kpi"><div class="label">Trip energy (loads only)</div><div id="tripWhAh" class="value">0</div></div>
-          <div class="kpi"><div class="label">Battery required — Usable / Nameplate</div><div id="bankAh" class="value">0 / 0</div></div>
+        <!-- GEN -->
+        <div class="pillhead"><span class="pill pill--gen">GEN</span><span class="note">Total daily generation/charging</span></div>
+        <div class="family">
+          <div class="summary compact">
+            <div class="kpi"><div class="label">GEN — Total</div><div id="genWhDay" class="value">0</div></div>
+            <div class="kpi hidden"><div class="label">GEN — Total</div><div id="genAhDay" class="value">0</div></div>
+          </div>
         </div>
 
-        <div class="summary" style="margin-top:6px">
-          <div class="kpi"><div class="label">Anchor — per day</div><div id="anchorWhAh" class="value">0</div></div>
-          <div class="kpi"><div class="label">Underway — per day</div><div id="sailWhAh" class="value">0</div></div>
-          <div class="kpi"><div class="label">Est. inverter standby</div><div id="invStandbyWh" class="value">0</div></div>
-          <div class="kpi"><div class="label">Suggested module layout</div><div id="suggestLayout" class="value">—</div></div>
+        <!-- BALANCE -->
+        <div class="pillhead"><span class="pill pill--balance">BALANCE</span><span class="note">Net daily balance, trip total, and bank sizing</span></div>
+        <div class="family">
+          <div class="summary compact">
+            <div class="kpi"><div class="label">NET (Gen − Loads)</div><div id="netWhDay" class="value">0</div></div>
+            <div class="kpi hidden"><div class="label">NET (Gen − Loads)</div><div id="netAhDay" class="value">0</div></div>
+            <div class="kpi"><div class="label">Trip energy (loads only)</div><div id="tripWhAh" class="value">0</div></div>
+            <div class="kpi"><div class="label">Battery required — Usable / Nameplate</div><div id="bankAh" class="value">0 / 0</div></div>
+            <div class="kpi"><div class="label">Suggested module layout</div><div id="suggestLayout" class="value">—</div></div>
+          </div>
         </div>
 
+        <!-- RECOMMENDATIONS -->
+        <div class="pillhead"><span class="pill pill--recs">RECOMMENDATIONS</span><span class="note">Hints based on your model</span></div>
+        <div class="family">
+          <ul class="muted" style="margin:0 0 4px 18px">
+            <li>Reduce anchor lighting by switching to LEDs (if not already).</li>
+            <li>Turn off inverter when AC loads are not needed to avoid standby draw.</li>
+            <li>Consider adding solar or runtime if Net is negative on most days.</li>
+          </ul>
+          <div class="note">This list is static for now. If you want, we can wire a tiny function later to populate it dynamically based on <code>netWhDay</code>, AC hours, etc.</div>
+        </div>
+
+        <!-- Hidden voltage mirrors (unchanged) -->
         <span id="vLabel" class="hidden">12</span>
         <span id="vLabel2" class="hidden">12</span>
       </div>
