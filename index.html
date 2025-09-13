@@ -1,713 +1,1899 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Boat Battery Sizer & Load Calculator</title>
-  <style>
-    :root{
-      --bg:#0b1320; --panel:#121a2b; --muted:#94a3b8; --text:#e6edf3; --accent:#60a5fa; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --line:#1f2a44;
-    }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;background:var(--bg);color:var(--text);}
-    header{padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:linear-gradient(180deg,rgba(11,19,32,.95),rgba(11,19,32,.85));backdrop-filter:saturate(1.1) blur(6px);z-index:5}
-    h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.3px}
-    header .sub{font-size:12px;color:var(--muted)}
-    main{padding:16px 16px 28px;max-width:1300px;margin:0 auto}
-    .grid{display:grid;grid-template-columns:320px 1fr;gap:16px}
-    @media (max-width:1024px){.grid{grid-template-columns:1fr}}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Boat Battery Sizer & Load Calculator</title>
+    <style>
+      :root {
+        --bg: #0b1320;
+        --panel: #121a2b;
+        --muted: #94a3b8;
+        --text: #e6edf3;
+        --accent: #60a5fa;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --bad: #ef4444;
+        --line: #1f2a44;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
+          "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(11, 19, 32, 0.95),
+          rgba(11, 19, 32, 0.85)
+        );
+        backdrop-filter: saturate(1.1) blur(6px);
+        z-index: 5;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+      header .sub {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      main {
+        padding: 16px 16px 28px;
+        max-width: 1300px;
+        margin: 0 auto;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 1024px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
 
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-    .card h2{margin:0;padding:14px 16px;border-bottom:1px solid var(--line);font-size:15px}
-    .card .content{padding:14px 16px}
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .card h2 {
+        margin: 0;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        font-size: 15px;
+      }
+      .card .content {
+        padding: 14px 16px;
+      }
 
-    .row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-    .pair{display:flex;gap:10px;align-items:center}
-    .pair label{min-width:140px;font-size:12px;color:var(--muted)}
-    .pair input,.pair select{flex:1;min-width:0;padding:8px;border-radius:10px;border:1px solid var(--line);background:#0c1626;color:var(--text)}
-    input[type="number"]{appearance:textfield}
-    input:focus,select:focus{outline:2px solid rgba(96,165,250,.35)}
-    .note{font-size:12px;color:var(--muted)}
+      .row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .pair {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .pair label {
+        min-width: 140px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .pair input,
+      .pair select {
+        flex: 1;
+        min-width: 0;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #0c1626;
+        color: var(--text);
+      }
+      input[type="number"] {
+        appearance: textfield;
+      }
+      input:focus,
+      select:focus {
+        outline: 2px solid rgba(96, 165, 250, 0.35);
+      }
+      .note {
+        font-size: 12px;
+        color: var(--muted);
+      }
 
-    .tabs{display:flex;gap:8px;margin-bottom:10px}
-    .tab{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#0c1626;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
-    .tab.active{color:var(--text);background:#132038}
-    .tabpanes > .pane{display:none}
-    .tabpanes > .pane.active{display:block}
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .tab {
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #0c1626;
+        font-size: 12px;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+      }
+      .tab.active {
+        color: var(--text);
+        background: #132038;
+      }
+      .tabpanes > .pane {
+        display: none;
+      }
+      .tabpanes > .pane.active {
+        display: block;
+      }
 
-    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-    button{background:#0c1626;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer}
-    button.primary{background:linear-gradient(180deg,#2b4a7a,#1b2f52);border-color:#223659}
-    button:hover{filter:brightness(1.08)}
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      button {
+        background: #0c1626;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: linear-gradient(180deg, #2b4a7a, #1b2f52);
+        border-color: #223659;
+      }
+      button:hover {
+        filter: brightness(1.08);
+      }
 
-    table{width:100%;border-collapse:collapse;border:1px solid var(--line);overflow:hidden;border-radius:12px}
-    thead th{position:sticky;top:0;background:#0e1a2f;border-bottom:1px solid var(--line);font-weight:600}
-    th,td{border-bottom:1px solid var(--line);padding:8px;font-size:12px;text-align:left}
-    tbody tr:hover{background:#0d1628}
-    .number{width:100px}
-    .qty{width:72px}
-    .select{min-width:150px}
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid var(--line);
+        overflow: hidden;
+        border-radius: 12px;
+      }
+      thead th {
+        position: sticky;
+        top: 0;
+        background: #0e1a2f;
+        border-bottom: 1px solid var(--line);
+        font-weight: 600;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px;
+        font-size: 12px;
+        text-align: left;
+      }
+      tbody tr:hover {
+        background: #0d1628;
+      }
+      .number {
+        width: 100px;
+      }
+      .qty {
+        width: 72px;
+      }
+      .select {
+        min-width: 150px;
+      }
 
-    #loadTable th:nth-child(2), #loadTable th:nth-child(3), #loadTable th:nth-child(4){min-width:140px}
-    #loadTable td:nth-child(2) select, #loadTable td:nth-child(3) select, #loadTable td:nth-child(4) select{min-width:140px}
+      #loadTable th:nth-child(2),
+      #loadTable th:nth-child(3),
+      #loadTable th:nth-child(4) {
+        min-width: 140px;
+      }
+      #loadTable td:nth-child(2) select,
+      #loadTable td:nth-child(3) select,
+      #loadTable td:nth-child(4) select {
+        min-width: 140px;
+      }
 
-    .center{text-align:center}
+      .center {
+        text-align: center;
+      }
 
-    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-    @media (max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}}
-    .kpi{background:#0c1626;border:1px solid var(--line);border-radius:12px;padding:12px}
-    .kpi .label{font-size:11px;color:var(--muted)}
-    .kpi .value{font-size:18px;margin-top:4px}
-    .kpi.ok .value{color:var(--ok)}
-    .kpi.warn .value{color:var(--warn)}
-    .kpi.bad .value{color:var(--bad)}
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      @media (max-width: 900px) {
+        .summary {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .kpi {
+        background: #0c1626;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .kpi .label {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .kpi .value {
+        font-size: 18px;
+        margin-top: 4px;
+      }
+      .kpi.ok .value {
+        color: var(--ok);
+      }
+      .kpi.warn .value {
+        color: var(--warn);
+      }
+      .kpi.bad .value {
+        color: var(--bad);
+      }
 
-    .foot{margin-top:14px;font-size:12px;color:var(--muted)}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#0c1626;font-size:11px;margin-right:6px}
+      .foot {
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #0c1626;
+        font-size: 11px;
+        margin-right: 6px;
+      }
 
-    .gen-form{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
-    .gen-form .full{grid-column:1 / -1}
-    .gen-list table td.actions{white-space:nowrap}
-    .badge{display:inline-block;padding:2px 6px;border:1px solid var(--line);border-radius:999px;font-size:11px;background:#0c1626;color:var(--muted)}
-    .muted{color:var(--muted);font-size:12px}
-    .danger{color:var(--bad)}
-    .link{color:var(--accent);cursor:pointer}
+      .gen-form {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .gen-list table td.actions {
+        white-space: nowrap;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 11px;
+        background: #0c1626;
+        color: var(--muted);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .danger {
+        color: var(--bad);
+      }
+      .link {
+        color: var(--accent);
+        cursor: pointer;
+      }
 
-    .hidden{display:none!important}
+      .hidden {
+        display: none !important;
+      }
 
-    /* ====== New: Bottom family headers & group wrappers ====== */
-    .pillhead{display:flex;align-items:center;gap:10px;margin:14px 0 8px}
-    .pill--loads{background:rgba(96,165,250,.18);border-color:rgba(96,165,250,.35);color:#cfe6ff}
-    .pill--gen{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.35);color:#d9f7e5}
-    .pill--balance{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.35);color:#ffe7c2}
-    .pill--recs{background:rgba(148,163,184,.18);border-color:rgba(148,163,184,.35);color:#e6edf3}
+      /* ====== New: Bottom family headers & group wrappers ====== */
+      .pillhead {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 14px 0 8px;
+      }
+      .pill--loads {
+        background: rgba(96, 165, 250, 0.18);
+        border-color: rgba(96, 165, 250, 0.35);
+        color: #cfe6ff;
+      }
+      .pill--gen {
+        background: rgba(34, 197, 94, 0.18);
+        border-color: rgba(34, 197, 94, 0.35);
+        color: #d9f7e5;
+      }
+      .pill--balance {
+        background: rgba(245, 158, 11, 0.18);
+        border-color: rgba(245, 158, 11, 0.35);
+        color: #ffe7c2;
+      }
+      .pill--recs {
+        background: rgba(148, 163, 184, 0.18);
+        border-color: rgba(148, 163, 184, 0.35);
+        color: #e6edf3;
+      }
 
-    .family{border:1px solid var(--line);border-radius:14px;padding:10px;background:#0c1626}
-    .family + .family{margin-top:10px}
-    .summary.compact{margin:0}
+      .family {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px;
+        background: #0c1626;
+      }
+      .family + .family {
+        margin-top: 10px;
+      }
+      .summary.compact {
+        margin: 0;
+      }
 
-    @media (max-width:800px){.gen-form{grid-template-columns:1fr}}
-    @media print{
-      header, .toolbar, .tabs, .libRow, .foot, .note.hide-print, .no-print{display:none!important}
-      body{background:#fff;color:#000}
-      .card, .kpi{border-color:#ddd;background:#fff}
-      .grid{grid-template-columns:1fr}
-      a[href]:after{content:''}
-    }
-  </style>
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-</head>
-<body>
-  <header>
-    <h1>Boat Battery Sizer & Load Calculator</h1>
-    <div class="sub">Model daily DC/AC loads, generation/charging, and battery size. Save scenarios, export CSV, or print a report.</div>
-  </header>
-
-  <main class="grid">
-    <!-- SETTINGS -->
-    <section class="card" aria-label="Settings">
-      <h2>System & Sizing Settings</h2>
-      <div class="content">
-        <div class="row">
-          <div class="pair">
-            <label for="voltage">System voltage</label>
-            <select id="voltage" class="select">
-              <option value="12">12 V</option>
-              <option value="24">24 V</option>
-              <option value="48">48 V</option>
-            </select>
-          </div>
-          <span class="note">Choose your DC system nominal voltage (12/24/48 V).</span>
-        </div>
-
-        <div class="row">
-          <div class="pair">
-            <label for="chemistry">Battery chemistry</label>
-            <select id="chemistry" class="select">
-              <option value="LFP">LiFePO₄</option>
-              <option value="AGM">AGM / Flooded Lead-acid</option>
-              <option value="GEL">Gel</option>
-            </select>
-          </div>
-          <span class="note">Sets a sensible default usable depth-of-discharge (DoD).</span>
-        </div>
-
-        <div class="row">
-          <div class="pair">
-            <label for="dod">Usable DoD (%)</label>
-            <input id="dod" type="number" min="10" max="99" step="1" class="number" />
-          </div>
-          <span class="note">Typical: LFP 85–90%, AGM 50%, Gel 50–60%.</span>
-        </div>
-
-        <div class="row">
-          <div class="pair">
-            <label for="reserve">Reserve margin (%)</label>
-            <input id="reserve" type="number" min="0" max="100" step="1" class="number" value="20"/>
-          </div>
-          <span class="note">Safety headroom on top of trip energy.</span>
-        </div>
-
-        <div class="row">
-          <div class="pair">
-            <label for="days">Trip length (days)</label>
-            <input id="days" type="number" min="1" step="1" class="number" value="2"/>
-          </div>
-          <span class="note">Per-day hours entered below × this many days.</span>
-        </div>
-
-        <div class="row">
-          <div class="pair">
-            <label for="derate">Capacity derate for temp/age (%)</label>
-            <input id="derate" type="number" min="0" max="50" step="1" class="number" value="0"/>
-          </div>
-          <span class="note">Optional: reduce effective capacity to model cold/aging.</span>
-        </div>
-
-        <div class="row">
-          <div class="pair">
-            <label for="invEff">Inverter efficiency (%)</label>
-            <input id="invEff" type="number" min="50" max="100" step="1" class="number" value="90"/>
-          </div>
-          <span class="note">Only used for AC loads.</span>
-        </div>
-
-        <div class="row">
-          <div class="pair">
-            <label for="invStandby">Inverter standby (W)</label>
-            <input id="invStandby" type="number" min="0" step="1" class="number" value="6"/>
-          </div>
-          <span class="note">“On but idle” draw; uses max AC hours per mode.</span>
-        </div>
-
-        <div class="foot">Tip: Switch anchor light to LED in the library to see instant savings.</div>
+      @media (max-width: 800px) {
+        .gen-form {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media print {
+        header,
+        .toolbar,
+        .tabs,
+        .libRow,
+        .foot,
+        .note.hide-print,
+        .no-print {
+          display: none !important;
+        }
+        body {
+          background: #fff;
+          color: #000;
+        }
+        .card,
+        .kpi {
+          border-color: #ddd;
+          background: #fff;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        a[href]:after {
+          content: "";
+        }
+      }
+    </style>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+    ></script>
+  </head>
+  <body>
+    <header>
+      <h1>Boat Battery Sizer & Load Calculator</h1>
+      <div class="sub">
+        Model daily DC/AC loads, generation/charging, and battery size. Save
+        scenarios, export CSV, or print a report.
       </div>
-    </section>
+    </header>
 
-    <!-- LOADS & GENERATION (TABS) -->
-    <section class="card" aria-label="Loads and Generation">
-      <h2>Energy Model</h2>
-      <div class="content">
-        <div class="tabs no-print" role="tablist" aria-label="Energy tabs">
-          <div id="tab-loads" class="tab active" role="tab" aria-controls="pane-loads" aria-selected="true">Loads</div>
-          <div id="tab-gen" class="tab" role="tab" aria-controls="pane-gen" aria-selected="false">Generation & Charging</div>
-          <div id="tab-reports" class="tab" role="tab" aria-controls="pane-reports" aria-selected="false">Reports</div>
-          <!-- NEW: User Manual tab -->
-          <div id="tab-manual" class="tab" role="tab" aria-controls="pane-manual" aria-selected="false">User Manual</div>
-        </div>
-
-        <div class="tabpanes">
-          <!-- LOADS -->
-          <div id="pane-loads" class="pane active" role="tabpanel" aria-labelledby="tab-loads">
-            <div class="toolbar no-print">
-              <button class="primary" id="addRow">Add Load</button>
-              <select id="libSelect"></select>
-              <button id="addFromLib">Add from Library</button>
-              <button id="saveScenario">Save</button>
-              <button id="loadScenario">Load</button>
-              <button id="exportCsv">Export CSV</button>
-              <button onclick="window.print()">Print Report</button>
-              <button id="resetAll">Reset</button>
+    <main class="grid">
+      <!-- SETTINGS -->
+      <section class="card" aria-label="Settings">
+        <h2>System & Sizing Settings</h2>
+        <div class="content">
+          <div class="row">
+            <div class="pair">
+              <label for="voltage">System voltage</label>
+              <select id="voltage" class="select">
+                <option value="12">12 V</option>
+                <option value="24">24 V</option>
+                <option value="48">48 V</option>
+              </select>
             </div>
+            <span class="note"
+              >Choose your DC system nominal voltage (12/24/48 V).</span
+            >
+          </div>
 
-            <div class="note hide-print">Columns: Name • Category • DC/AC • Entry (Watts/Amps) • Value • Hours (Anchor/Underway) • Duty % • Qty • Delete</div>
+          <div class="row">
+            <div class="pair">
+              <label for="chemistry">Battery chemistry</label>
+              <select id="chemistry" class="select">
+                <option value="LFP">LiFePO₄</option>
+                <option value="AGM">AGM / Flooded Lead-acid</option>
+                <option value="GEL">Gel</option>
+              </select>
+            </div>
+            <span class="note"
+              >Sets a sensible default usable depth-of-discharge (DoD).</span
+            >
+          </div>
 
-            <div style="overflow:auto">
-              <table id="loadTable" aria-describedby="table of loads">
-                <thead>
-                  <tr>
-                    <th style="min-width:220px">Name</th>
-                    <th>Category</th>
-                    <th>Type</th>
-                    <th>Entry</th>
-                    <th class="center">W/A</th>
-                    <th class="center">Hours @ Anchor</th>
-                    <th class="center">Hours Underway</th>
-                    <th class="center">Duty %</th>
-                    <th class="center">Qty</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="tbody"></tbody>
-              </table>
+          <div class="row">
+            <div class="pair">
+              <label for="dod">Usable DoD (%)</label>
+              <input
+                id="dod"
+                type="number"
+                min="10"
+                max="99"
+                step="1"
+                class="number"
+              />
+            </div>
+            <span class="note">Typical: LFP 85–90%, AGM 50%, Gel 50–60%.</span>
+          </div>
+
+          <div class="row">
+            <div class="pair">
+              <label for="reserve">Reserve margin (%)</label>
+              <input
+                id="reserve"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                class="number"
+                value="20"
+              />
+            </div>
+            <span class="note">Safety headroom on top of trip energy.</span>
+          </div>
+
+          <div class="row">
+            <div class="pair">
+              <label for="days">Trip length (days)</label>
+              <input
+                id="days"
+                type="number"
+                min="1"
+                step="1"
+                class="number"
+                value="2"
+              />
+            </div>
+            <span class="note"
+              >Per-day hours entered below × this many days.</span
+            >
+          </div>
+
+          <div class="row">
+            <div class="pair">
+              <label for="derate">Capacity derate for temp/age (%)</label>
+              <input
+                id="derate"
+                type="number"
+                min="0"
+                max="50"
+                step="1"
+                class="number"
+                value="0"
+              />
+            </div>
+            <span class="note"
+              >Optional: reduce effective capacity to model cold/aging.</span
+            >
+          </div>
+
+          <div class="row">
+            <div class="pair">
+              <label for="invEff">Inverter efficiency (%)</label>
+              <input
+                id="invEff"
+                type="number"
+                min="50"
+                max="100"
+                step="1"
+                class="number"
+                value="90"
+              />
+            </div>
+            <span class="note">Only used for AC loads.</span>
+          </div>
+
+          <div class="row">
+            <div class="pair">
+              <label for="invStandby">Inverter standby (W)</label>
+              <input
+                id="invStandby"
+                type="number"
+                min="0"
+                step="1"
+                class="number"
+                value="6"
+              />
+            </div>
+            <span class="note"
+              >“On but idle” draw; uses max AC hours per mode.</span
+            >
+          </div>
+
+          <div class="foot">
+            Tip: Switch anchor light to LED in the library to see instant
+            savings.
+          </div>
+        </div>
+      </section>
+
+      <!-- LOADS & GENERATION (TABS) -->
+      <section class="card" aria-label="Loads and Generation">
+        <h2>Energy Model</h2>
+        <div class="content">
+          <div class="tabs no-print" role="tablist" aria-label="Energy tabs">
+            <div
+              id="tab-loads"
+              class="tab active"
+              role="tab"
+              aria-controls="pane-loads"
+              aria-selected="true"
+            >
+              Loads
+            </div>
+            <div
+              id="tab-gen"
+              class="tab"
+              role="tab"
+              aria-controls="pane-gen"
+              aria-selected="false"
+            >
+              Generation & Charging
+            </div>
+            <div
+              id="tab-reports"
+              class="tab"
+              role="tab"
+              aria-controls="pane-reports"
+              aria-selected="false"
+            >
+              Reports
+            </div>
+            <!-- NEW TAB: Electric Range (stub) -->
+            <div
+              id="tab-range"
+              class="tab"
+              role="tab"
+              aria-controls="pane-range"
+              aria-selected="false"
+            >
+              Electric Range
+            </div>
+            <!-- NEW: User Manual tab -->
+            <div
+              id="tab-manual"
+              class="tab"
+              role="tab"
+              aria-controls="pane-manual"
+              aria-selected="false"
+            >
+              User Manual
             </div>
           </div>
 
-          <!-- GENERATION -->
-          <div id="pane-gen" class="pane" role="tabpanel" aria-labelledby="tab-gen">
-            <div class="gen-form">
-              <div class="full">
-                <div class="pair">
-                  <label for="gen-type">Source type</label>
-                  <select id="gen-type" class="select" aria-label="Source type">
-                    <option>Solar</option>
-                    <option>Wind</option>
-                    <option>Alternator</option>
-                    <option>AC Charger</option>
-                  </select>
-                </div>
+          <div class="tabpanes">
+            <!-- LOADS -->
+            <div
+              id="pane-loads"
+              class="pane active"
+              role="tabpanel"
+              aria-labelledby="tab-loads"
+            >
+              <div class="toolbar no-print">
+                <button class="primary" id="addRow">Add Load</button>
+                <select id="libSelect"></select>
+                <button id="addFromLib">Add from Library</button>
+                <button id="saveScenario">Save</button>
+                <button id="loadScenario">Load</button>
+                <button id="exportCsv">Export CSV</button>
+                <button onclick="window.print()">Print Report</button>
+                <button id="resetAll">Reset</button>
               </div>
 
-              <div class="full">
-                <div class="pair">
-                  <label for="gen-name">Name</label>
-                  <input id="gen-name" placeholder="e.g., Arch Solar Array, Wind 400W, Victron 30A, Engine Alt 40A">
-                </div>
+              <div class="note hide-print">
+                Columns: Name • Category • DC/AC • Entry (Watts/Amps) • Value •
+                Hours (Anchor/Underway) • Duty % • Qty • Delete
               </div>
 
-              <div id="gen-fields" class="full"></div>
-
-              <div>
-                <div class="pair">
-                  <label for="gen-hours">Hours/day</label>
-                  <input id="gen-hours" type="number" min="0" step="0.1" value="4">
-                </div>
-                <span class="note">For Solar use sun hours; Wind often 24 h; Chargers/Alt = runtime.</span>
-              </div>
-
-              <div>
-                <div class="pair">
-                  <label for="gen-qty">Quantity</label>
-                  <input id="gen-qty" type="number" min="1" step="1" value="1">
-                </div>
-                <span class="note">Number of identical sources.</span>
-              </div>
-
-              <div class="full" style="display:flex;gap:8px;align-items:center">
-                <button class="primary" id="gen-add">Add Source</button>
-                <button id="gen-update" style="display:none">Update</button>
-                <button id="gen-cancel" style="display:none">Cancel</button>
-                <span id="gen-editing" class="muted"></span>
-              </div>
-            </div>
-
-            <div class="gen-list">
-              <div class="note hide-print">Click a row to edit. “Wh/day” and “Ah/day” are computed at your system voltage.</div>
-              <div style="overflow:auto">
-                <table id="genTable">
+              <div style="overflow: auto">
+                <table id="loadTable" aria-describedby="table of loads">
                   <thead>
                     <tr>
-                      <th>Name</th>
+                      <th style="min-width: 220px">Name</th>
+                      <th>Category</th>
                       <th>Type</th>
-                      <th>Details</th>
+                      <th>Entry</th>
+                      <th class="center">W/A</th>
+                      <th class="center">Hours @ Anchor</th>
+                      <th class="center">Hours Underway</th>
+                      <th class="center">Duty %</th>
                       <th class="center">Qty</th>
-                      <th class="center">Wh/day</th>
-                      <th class="center">Ah/day</th>
-                      <th class="center">Actions</th>
+                      <th></th>
                     </tr>
                   </thead>
-                  <tbody id="genBody"></tbody>
+                  <tbody id="tbody"></tbody>
                 </table>
               </div>
             </div>
 
-            <div class="foot">
-              Solar uses (Panel W × Panels × Sun Hrs × (1−Derate%) × Controller Eff%). Wind uses (Rated W × Capacity % × Hours). Alternator uses (DC A × V × Hours). AC Charger uses (DC A × V × Hours × Eff%).
-            </div>
-          </div>
+            <!-- GENERATION -->
+            <div
+              id="pane-gen"
+              class="pane"
+              role="tabpanel"
+              aria-labelledby="tab-gen"
+            >
+              <div class="gen-form">
+                <div class="full">
+                  <div class="pair">
+                    <label for="gen-type">Source type</label>
+                    <select
+                      id="gen-type"
+                      class="select"
+                      aria-label="Source type"
+                    >
+                      <option>Solar</option>
+                      <option>Wind</option>
+                      <option>Alternator</option>
+                      <option>AC Charger</option>
+                    </select>
+                  </div>
+                </div>
 
-          <!-- REPORTS -->
-          <div id="pane-reports" class="pane" role="tabpanel" aria-labelledby="tab-reports">
-            <div class="note hide-print" style="margin-bottom:10px">Positive bars = Generation, negative bars = Consumption; Net can be above/below zero. Line shows cumulative consumption over trip.</div>
+                <div class="full">
+                  <div class="pair">
+                    <label for="gen-name">Name</label>
+                    <input
+                      id="gen-name"
+                      placeholder="e.g., Arch Solar Array, Wind 400W, Victron 30A, Engine Alt 40A"
+                    />
+                  </div>
+                </div>
 
-            <div class="card" style="margin-bottom:16px;padding:12px">
-              <h3 style="margin:0 0 8px">Generation vs Consumption vs Net</h3>
-              <div style="height:240px">
-                <canvas id="reportsBar" height="200"></canvas>
+                <div id="gen-fields" class="full"></div>
+
+                <div>
+                  <div class="pair">
+                    <label for="gen-hours">Hours/day</label>
+                    <input
+                      id="gen-hours"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value="4"
+                    />
+                  </div>
+                  <span class="note"
+                    >For Solar use sun hours; Wind often 24 h; Chargers/Alt =
+                    runtime.</span
+                  >
+                </div>
+
+                <div>
+                  <div class="pair">
+                    <label for="gen-qty">Quantity</label>
+                    <input
+                      id="gen-qty"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value="1"
+                    />
+                  </div>
+                  <span class="note">Number of identical sources.</span>
+                </div>
+
+                <div
+                  class="full"
+                  style="display: flex; gap: 8px; align-items: center"
+                >
+                  <button class="primary" id="gen-add">Add Source</button>
+                  <button id="gen-update" style="display: none">Update</button>
+                  <button id="gen-cancel" style="display: none">Cancel</button>
+                  <span id="gen-editing" class="muted"></span>
+                </div>
               </div>
-              <div id="reportsBarFallback" style="display:none"></div>
-            </div>
 
-            <div class="card" style="padding:12px">
-              <h3 style="margin:0 0 8px">Cumulative Consumption Over Trip</h3>
-              <div style="height:240px">
-                <canvas id="reportsLine" height="200"></canvas>
+              <div class="gen-list">
+                <div class="note hide-print">
+                  Click a row to edit. “Wh/day” and “Ah/day” are computed at
+                  your system voltage.
+                </div>
+                <div style="overflow: auto">
+                  <table id="genTable">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Details</th>
+                        <th class="center">Qty</th>
+                        <th class="center">Wh/day</th>
+                        <th class="center">Ah/day</th>
+                        <th class="center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="genBody"></tbody>
+                  </table>
+                </div>
               </div>
-              <div id="reportsLineFallback" style="display:none"></div>
+
+              <div class="foot">
+                Solar uses (Panel W × Panels × Sun Hrs × (1−Derate%) ×
+                Controller Eff%). Wind uses (Rated W × Capacity % × Hours).
+                Alternator uses (DC A × V × Hours). AC Charger uses (DC A × V ×
+                Hours × Eff%).
+              </div>
+            </div>
+
+            <!-- REPORTS -->
+            <div
+              id="pane-reports"
+              class="pane"
+              role="tabpanel"
+              aria-labelledby="tab-reports"
+            >
+              <div class="note hide-print" style="margin-bottom: 10px">
+                Positive bars = Generation, negative bars = Consumption; Net can
+                be above/below zero. Line shows cumulative consumption over
+                trip.
+              </div>
+
+              <div class="card" style="margin-bottom: 16px; padding: 12px">
+                <h3 style="margin: 0 0 8px">
+                  Generation vs Consumption vs Net
+                </h3>
+                <div style="height: 240px">
+                  <canvas id="reportsBar" height="200"></canvas>
+                </div>
+                <div id="reportsBarFallback" style="display: none"></div>
+              </div>
+
+              <div class="card" style="padding: 12px">
+                <h3 style="margin: 0 0 8px">
+                  Cumulative Consumption Over Trip
+                </h3>
+                <div style="height: 240px">
+                  <canvas id="reportsLine" height="200"></canvas>
+                </div>
+                <div id="reportsLineFallback" style="display: none"></div>
+              </div>
+            </div>
+
+            <!-- NEW PANE: Electric Range (stub) -->
+            <div
+              id="pane-range"
+              class="pane"
+              role="tabpanel"
+              aria-labelledby="tab-range"
+            >
+              <!-- begin boat range -->
+              <div
+                style="
+                  font-family: sans-serif;
+                  background: #121a2b;
+                  color: #e6edf3;
+                  padding: 20px;
+                  border-radius: 12px;
+                  max-width: 480px;
+                  margin: auto;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+                "
+              >
+                <h2 style="color: #60a5fa; text-align: center">
+                  ⚡ Boat Range Calculator
+                </h2>
+
+                <label>🔋 Battery Capacity (Ah):</label>
+                <input
+                  type="number"
+                  id="batteryAh"
+                  value="150"
+                  style="width: 100%; padding: 6px; margin-bottom: 12px"
+                />
+
+                <label>⚙️ Motor Draw (A): <span id="motorVal">25</span></label>
+                <input
+                  type="range"
+                  id="motorDraw"
+                  min="10"
+                  max="60"
+                  value="25"
+                  step="1"
+                  style="width: 100%; margin-bottom: 12px"
+                  oninput="document.getElementById('motorVal').innerText = this.value"
+                />
+
+                <label>🚤 Speed:</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px">
+                  <input
+                    type="number"
+                    id="speed"
+                    value="3"
+                    style="flex: 1; padding: 6px"
+                  />
+                  <select id="speedUnit" style="flex: 1; padding: 6px">
+                    <option value="knots">knots</option>
+                    <option value="kmh">km/h</option>
+                    <option value="mph">mph</option>
+                  </select>
+                </div>
+
+                <label>🔌 Charger Output (A):</label>
+                <select
+                  id="chargerA"
+                  style="width: 100%; padding: 6px; margin-bottom: 12px"
+                >
+                  <option value="0">None</option>
+                  <option value="5">5 A</option>
+                  <option value="8">8 A</option>
+                  <option value="10">10 A</option>
+                  <option value="12">12 A</option>
+                  <option value="15">15 A</option>
+                  <option value="18" selected>18 A</option>
+                  <option value="20">20 A</option>
+                  <option value="25">25 A</option>
+                  <option value="30">30 A</option>
+                </select>
+
+                <label
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 12px;
+                  "
+                >
+                  <input type="checkbox" id="useCharger" checked />
+                  Include Charger in Calculation
+                </label>
+
+                <label>⛽ Generator Runtime (hours):</label>
+                <input
+                  type="number"
+                  id="genHours"
+                  value="5.5"
+                  style="width: 100%; padding: 6px; margin-bottom: 16px"
+                />
+
+                <button
+                  onclick="calculateRange()"
+                  style="
+                    width: 100%;
+                    padding: 10px;
+                    background: #60a5fa;
+                    color: #fff;
+                    border: none;
+                    border-radius: 6px;
+                    font-weight: bold;
+                  "
+                >
+                  Calculate
+                </button>
+
+                <div
+                  id="results"
+                  style="
+                    margin-top: 16px;
+                    padding: 12px;
+                    background: #1f2a44;
+                    border-radius: 8px;
+                  "
+                ></div>
+              </div>
+
+              <script>
+                function calculateRange() {
+                  const batteryAh = parseFloat(
+                    document.getElementById("batteryAh").value
+                  );
+                  const motorA = parseFloat(
+                    document.getElementById("motorDraw").value
+                  );
+                  const speed = parseFloat(
+                    document.getElementById("speed").value
+                  );
+                  const speedUnit = document.getElementById("speedUnit").value;
+                  const chargerA = parseFloat(
+                    document.getElementById("chargerA").value
+                  );
+                  const genHours = parseFloat(
+                    document.getElementById("genHours").value
+                  );
+                  const useCharger =
+                    document.getElementById("useCharger").checked;
+
+                  const netDraw = useCharger
+                    ? Math.max(motorA - chargerA, 0)
+                    : motorA;
+                  const batteryUsedDuringGen = netDraw * genHours;
+                  let remainingBattery = Math.max(
+                    batteryAh - batteryUsedDuringGen,
+                    0
+                  );
+                  const batteryOnlyHours = remainingBattery / motorA;
+                  const totalHours = genHours + batteryOnlyHours;
+
+                  // Normalize speed to knots
+                  let speedKnots = speed;
+                  if (speedUnit === "kmh") speedKnots = speed * 0.539957;
+                  if (speedUnit === "mph") speedKnots = speed * 0.868976;
+
+                  const rangeNm = totalHours * speedKnots;
+                  const rangeKm = rangeNm * 1.852;
+                  const rangeMi = rangeNm * 1.15078;
+
+                  document.getElementById("results").innerHTML = `
+    <b>Net Battery Draw:</b> ${netDraw.toFixed(2)} A<br/>
+    <b>Battery Used During Generator:</b> ${batteryUsedDuringGen.toFixed(
+      1
+    )} Ah<br/>
+    <b>Remaining Battery:</b> ${remainingBattery.toFixed(1)} Ah<br/>
+    <b>Runtime After Generator:</b> ${batteryOnlyHours.toFixed(2)} h<br/>
+    <b><u>Total Runtime:</u></b> ${totalHours.toFixed(2)} h<br/><hr/>
+    <b>Estimated Range:</b><br/>
+    - <b>${rangeNm.toFixed(1)} nm</b><br/>
+    - <b>${rangeKm.toFixed(1)} km</b><br/>
+    - <b>${rangeMi.toFixed(1)} miles</b>
+  `;
+                }
+              </script>
+
+              <!-- end boat range-->
+            </div>
+
+            <!-- NEW: USER MANUAL -->
+            <div
+              id="pane-manual"
+              class="pane"
+              role="tabpanel"
+              aria-labelledby="tab-manual"
+            >
+              <div class="card" style="padding: 12px">
+                <h3 style="margin: 0 0 10px">User Manual</h3>
+                <p class="muted" style="margin-top: 0">
+                  This tab explains each field, the core math, and how to
+                  interpret results.
+                </p>
+
+                <h4>1) System &amp; Sizing Settings</h4>
+                <ul>
+                  <li>
+                    <b>System voltage</b> — Your DC bus nominal voltage
+                    (12/24/48 V). Affects Amp-hour conversions (Wh ÷ V = Ah) and
+                    alternator/charger energy.
+                  </li>
+                  <li>
+                    <b>Battery chemistry</b> — Sets default usable DoD: LFP ≈
+                    88%, AGM ≈ 50%, Gel ≈ 55%.
+                  </li>
+                  <li>
+                    <b>Usable DoD (%)</b> — Portion of the bank you plan to use
+                    before recharge.
+                  </li>
+                  <li>
+                    <b>Reserve margin (%)</b> — Extra headroom added to trip
+                    energy (weather, unexpected loads).
+                  </li>
+                  <li>
+                    <b>Trip length (days)</b> — Multiplies “per-day” loads.
+                  </li>
+                  <li>
+                    <b>Capacity derate (%)</b> — Reduces nameplate capacity to
+                    model cold/aging.
+                  </li>
+                  <li>
+                    <b>Inverter efficiency (%)</b> — Used to inflate AC loads
+                    back to DC side.
+                  </li>
+                  <li>
+                    <b>Inverter standby (W)</b> — “On but idle” draw; uses max
+                    AC hours per mode (Anchor/Underway).
+                  </li>
+                </ul>
+
+                <h4>2) Loads Table (Per-Day Inputs)</h4>
+                <ul>
+                  <li>
+                    <b>Name / Category</b> — Any label; category is for
+                    grouping.
+                  </li>
+                  <li><b>Type</b> — <i>DC</i> or <i>AC via inverter</i>.</li>
+                  <li>
+                    <b>Entry</b> — Enter power/current as <i>Watts</i> or
+                    <i>Amps</i>.
+                  </li>
+                  <li><b>W/A</b> — The numeric value (e.g., 60 W or 2 A).</li>
+                  <li>
+                    <b>Hours @ Anchor / Underway</b> — Hours the device runs in
+                    each mode.
+                  </li>
+                  <li>
+                    <b>Duty %</b> — Percent on-time within those hours (e.g., a
+                    fridge might cycle 35%).
+                  </li>
+                  <li><b>Qty</b> — Number of identical devices.</li>
+                </ul>
+
+                <h4>3) Generation &amp; Charging</h4>
+                <ul>
+                  <li>
+                    <b>Solar</b> — Panel W × Panels × Sun Hours × (1 − Derate%)
+                    × Controller Eff%.
+                  </li>
+                  <li><b>Wind</b> — Rated W × Capacity Factor% × Hours.</li>
+                  <li><b>Alternator</b> — DC Amps × System V × Hours.</li>
+                  <li><b>AC Charger</b> — DC Amps × V × Hours × Eff%.</li>
+                </ul>
+
+                <h4>4) Calculations</h4>
+                <ul>
+                  <li>
+                    <b>Row energy (DC)</b>
+                    <ul>
+                      <li>
+                        If entry = <b>W</b>:
+                        <code>Wh = Watts × Hours × Duty × Qty</code>
+                      </li>
+                      <li>
+                        If entry = <b>A</b>:
+                        <code>Wh = Amps × System V × Hours × Duty × Qty</code>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <b>Row energy (AC via inverter)</b>
+                    <ul>
+                      <li>
+                        If entry = <b>W</b>:
+                        <code
+                          >Wh = Watts × Hours × Duty × Qty ÷ InverterEff</code
+                        >
+                      </li>
+                      <li>
+                        If entry = <b>A</b>:
+                        <code
+                          >Wh = Amps × 120 V × Hours × Duty × Qty ÷
+                          InverterEff</code
+                        >
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <b>Inverter standby Wh/day</b> —
+                    <code
+                      >StandbyW × (max AC hours @ Anchor + max AC hours
+                      Underway)</code
+                    >
+                  </li>
+                  <li>
+                    <b>Total Loads (per day)</b> — Sum of all rows + inverter
+                    standby.
+                  </li>
+                  <li>
+                    <b>Total Generation (per day)</b> — Sum of all sources (at
+                    system V).
+                  </li>
+                  <li>
+                    <b>Net (per day)</b> —
+                    <code>Generation − Loads</code> (positive = surplus).
+                  </li>
+                  <li>
+                    <b>Trip energy</b> — <code>Loads/day × Trip days</code>.
+                  </li>
+                  <li>
+                    <b>Battery sizing</b>
+                    <ul>
+                      <li>Trip Ah = <code>Trip Wh ÷ V</code></li>
+                      <li>
+                        Usable required Ah =
+                        <code>Trip Ah × (1 + Reserve%)</code>
+                      </li>
+                      <li>
+                        <b>Nameplate Ah</b> = <code>Usable Ah ÷ DoD</code>, then
+                        adjust for <code>Derate</code> if set.
+                      </li>
+                      <li>
+                        Suggested layout ≈ number of 100 Ah modules @ system V.
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+
+                <h4>5) KPIs &amp; Units</h4>
+                <ul>
+                  <li>
+                    Use the <b>Ah/Wh toggle</b> to switch units (defaults to
+                    Ah). KPIs and Reports follow your selection.
+                  </li>
+                  <li>
+                    Net card colors: green = surplus, yellow = small deficit,
+                    red = larger deficit.
+                  </li>
+                </ul>
+
+                <h4>6) Reports</h4>
+                <ul>
+                  <li>
+                    <b>Bar Chart</b> — Generation (positive), Consumption (shown
+                    as negative), and Net per day.
+                  </li>
+                  <li>
+                    <b>Line Chart</b> — Cumulative consumption over the trip.
+                  </li>
+                  <li>Both charts react to the Ah/Wh toggle.</li>
+                </ul>
+
+                <h4>7) Save / Load / Export / Print</h4>
+                <ul>
+                  <li>
+                    <b>Save</b> — Stores your scenario in browser storage.
+                  </li>
+                  <li><b>Load</b> — Restores the saved scenario.</li>
+                  <li>
+                    <b>Export CSV</b> — Exports load rows and summary KPIs.
+                  </li>
+                  <li>
+                    <b>Print Report</b> — Prints a clean report view of the
+                    current state.
+                  </li>
+                </ul>
+
+                <h4>8) Defaults &amp; Autosave</h4>
+                <ul>
+                  <li>
+                    On first run (or after Reset), a sensible set of example
+                    loads &amp; solar generation is added.
+                  </li>
+                  <li>
+                    Autosave runs in the background so you don’t lose work;
+                    <b>Reset</b> clears autosave.
+                  </li>
+                </ul>
+
+                <h4>9) Tips</h4>
+                <ul>
+                  <li>
+                    Convert incandescent/halogen to LED to shrink nightly loads.
+                  </li>
+                  <li>Mind inverter standby; switch off when not needed.</li>
+                  <li>
+                    For AC devices, consider using actual measured watts
+                    (Kill-A-Watt / spec sheet).
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <!-- NEW: USER MANUAL -->
-          <div id="pane-manual" class="pane" role="tabpanel" aria-labelledby="tab-manual">
-            <div class="card" style="padding:12px">
-              <h3 style="margin:0 0 10px">User Manual</h3>
-              <p class="muted" style="margin-top:0">This tab explains each field, the core math, and how to interpret results.</p>
+          <!-- Unit Toggle (unchanged) -->
+          <div
+            class="no-print"
+            style="
+              margin: 10px 0 12px;
+              display: flex;
+              align-items: center;
+              gap: 12px;
+            "
+          >
+            <span class="note">Display units:</span>
+            <label
+              style="
+                font-size: 12px;
+                color: var(--muted);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              "
+            >
+              <input type="radio" name="unitMode" value="Wh" id="unitWh" /> Wh
+            </label>
+            <label
+              style="
+                font-size: 12px;
+                color: var(--muted);
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              "
+            >
+              <input
+                type="radio"
+                name="unitMode"
+                value="Ah"
+                id="unitAh"
+                checked
+              />
+              Ah
+            </label>
+            <span class="note">Affects KPIs and Reports.</span>
+          </div>
 
-              <h4>1) System &amp; Sizing Settings</h4>
-              <ul>
-                <li><b>System voltage</b> — Your DC bus nominal voltage (12/24/48 V). Affects Amp-hour conversions (Wh ÷ V = Ah) and alternator/charger energy.</li>
-                <li><b>Battery chemistry</b> — Sets default usable DoD:
-                  LFP ≈ 88%, AGM ≈ 50%, Gel ≈ 55%.</li>
-                <li><b>Usable DoD (%)</b> — Portion of the bank you plan to use before recharge.</li>
-                <li><b>Reserve margin (%)</b> — Extra headroom added to trip energy (weather, unexpected loads).</li>
-                <li><b>Trip length (days)</b> — Multiplies “per-day” loads.</li>
-                <li><b>Capacity derate (%)</b> — Reduces nameplate capacity to model cold/aging.</li>
-                <li><b>Inverter efficiency (%)</b> — Used to inflate AC loads back to DC side.</li>
-                <li><b>Inverter standby (W)</b> — “On but idle” draw; uses max AC hours per mode (Anchor/Underway).</li>
-              </ul>
+          <!-- ===== NEW: Cognitively grouped bottom outputs ===== -->
 
-              <h4>2) Loads Table (Per-Day Inputs)</h4>
-              <ul>
-                <li><b>Name / Category</b> — Any label; category is for grouping.</li>
-                <li><b>Type</b> — <i>DC</i> or <i>AC via inverter</i>.</li>
-                <li><b>Entry</b> — Enter power/current as <i>Watts</i> or <i>Amps</i>.</li>
-                <li><b>W/A</b> — The numeric value (e.g., 60 W or 2 A).</li>
-                <li><b>Hours @ Anchor / Underway</b> — Hours the device runs in each mode.</li>
-                <li><b>Duty %</b> — Percent on-time within those hours (e.g., a fridge might cycle 35%).</li>
-                <li><b>Qty</b> — Number of identical devices.</li>
-              </ul>
-
-              <h4>3) Generation &amp; Charging</h4>
-              <ul>
-                <li><b>Solar</b> — Panel W × Panels × Sun Hours × (1 − Derate%) × Controller Eff%.</li>
-                <li><b>Wind</b> — Rated W × Capacity Factor% × Hours.</li>
-                <li><b>Alternator</b> — DC Amps × System V × Hours.</li>
-                <li><b>AC Charger</b> — DC Amps × V × Hours × Eff%.</li>
-              </ul>
-
-              <h4>4) Calculations</h4>
-              <ul>
-                <li><b>Row energy (DC)</b>
-                  <ul>
-                    <li>If entry = <b>W</b>: <code>Wh = Watts × Hours × Duty × Qty</code></li>
-                    <li>If entry = <b>A</b>: <code>Wh = Amps × System V × Hours × Duty × Qty</code></li>
-                  </ul>
-                </li>
-                <li><b>Row energy (AC via inverter)</b>
-                  <ul>
-                    <li>If entry = <b>W</b>: <code>Wh = Watts × Hours × Duty × Qty ÷ InverterEff</code></li>
-                    <li>If entry = <b>A</b>: <code>Wh = Amps × 120 V × Hours × Duty × Qty ÷ InverterEff</code></li>
-                  </ul>
-                </li>
-                <li><b>Inverter standby Wh/day</b> — <code>StandbyW × (max AC hours @ Anchor + max AC hours Underway)</code></li>
-                <li><b>Total Loads (per day)</b> — Sum of all rows + inverter standby.</li>
-                <li><b>Total Generation (per day)</b> — Sum of all sources (at system V).</li>
-                <li><b>Net (per day)</b> — <code>Generation − Loads</code> (positive = surplus).</li>
-                <li><b>Trip energy</b> — <code>Loads/day × Trip days</code>.</li>
-                <li><b>Battery sizing</b>
-                  <ul>
-                    <li>Trip Ah = <code>Trip Wh ÷ V</code></li>
-                    <li>Usable required Ah = <code>Trip Ah × (1 + Reserve%)</code></li>
-                    <li><b>Nameplate Ah</b> = <code>Usable Ah ÷ DoD</code>, then adjust for <code>Derate</code> if set.</li>
-                    <li>Suggested layout ≈ number of 100 Ah modules @ system V.</li>
-                  </ul>
-                </li>
-              </ul>
-
-              <h4>5) KPIs &amp; Units</h4>
-              <ul>
-                <li>Use the <b>Ah/Wh toggle</b> to switch units (defaults to Ah). KPIs and Reports follow your selection.</li>
-                <li>Net card colors: green = surplus, yellow = small deficit, red = larger deficit.</li>
-              </ul>
-
-              <h4>6) Reports</h4>
-              <ul>
-                <li><b>Bar Chart</b> — Generation (positive), Consumption (shown as negative), and Net per day.</li>
-                <li><b>Line Chart</b> — Cumulative consumption over the trip.</li>
-                <li>Both charts react to the Ah/Wh toggle.</li>
-              </ul>
-
-              <h4>7) Save / Load / Export / Print</h4>
-              <ul>
-                <li><b>Save</b> — Stores your scenario in browser storage.</li>
-                <li><b>Load</b> — Restores the saved scenario.</li>
-                <li><b>Export CSV</b> — Exports load rows and summary KPIs.</li>
-                <li><b>Print Report</b> — Prints a clean report view of the current state.</li>
-              </ul>
-
-              <h4>8) Defaults &amp; Autosave</h4>
-              <ul>
-                <li>On first run (or after Reset), a sensible set of example loads &amp; solar generation is added.</li>
-                <li>Autosave runs in the background so you don’t lose work; <b>Reset</b> clears autosave.</li>
-              </ul>
-
-              <h4>9) Tips</h4>
-              <ul>
-                <li>Convert incandescent/halogen to LED to shrink nightly loads.</li>
-                <li>Mind inverter standby; switch off when not needed.</li>
-                <li>For AC devices, consider using actual measured watts (Kill-A-Watt / spec sheet).</li>
-              </ul>
+          <!-- LOADS -->
+          <div class="pillhead">
+            <span class="pill pill--loads">LOADS</span
+            ><span class="note"
+              >Anchor / Underway and total daily consumption</span
+            >
+          </div>
+          <div class="family">
+            <div class="summary compact">
+              <div class="kpi">
+                <div class="label">LOADS — DC + AC (after inverter)</div>
+                <div id="whDay" class="value">0</div>
+              </div>
+              <div class="kpi hidden">
+                <div class="label">LOADS — DC + AC (after inverter)</div>
+                <div id="ahDay" class="value">0</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Anchor — per day</div>
+                <div id="anchorWhAh" class="value">0</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Underway — per day</div>
+                <div id="sailWhAh" class="value">0</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Est. inverter standby</div>
+                <div id="invStandbyWh" class="value">0</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Unit Toggle (unchanged) -->
-        <div class="no-print" style="margin:10px 0 12px; display:flex; align-items:center; gap:12px">
-          <span class="note">Display units:</span>
-          <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;">
-            <input type="radio" name="unitMode" value="Wh" id="unitWh" /> Wh
-          </label>
-          <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;">
-            <input type="radio" name="unitMode" value="Ah" id="unitAh" checked /> Ah
-          </label>
-          <span class="note">Affects KPIs and Reports.</span>
-        </div>
-
-        <!-- ===== NEW: Cognitively grouped bottom outputs ===== -->
-
-        <!-- LOADS -->
-        <div class="pillhead"><span class="pill pill--loads">LOADS</span><span class="note">Anchor / Underway and total daily consumption</span></div>
-        <div class="family">
-          <div class="summary compact">
-            <div class="kpi"><div class="label">LOADS — DC + AC (after inverter)</div><div id="whDay" class="value">0</div></div>
-            <div class="kpi hidden"><div class="label">LOADS — DC + AC (after inverter)</div><div id="ahDay" class="value">0</div></div>
-            <div class="kpi"><div class="label">Anchor — per day</div><div id="anchorWhAh" class="value">0</div></div>
-            <div class="kpi"><div class="label">Underway — per day</div><div id="sailWhAh" class="value">0</div></div>
-            <div class="kpi"><div class="label">Est. inverter standby</div><div id="invStandbyWh" class="value">0</div></div>
+          <!-- GEN -->
+          <div class="pillhead">
+            <span class="pill pill--gen">GEN</span
+            ><span class="note">Total daily generation/charging</span>
           </div>
-        </div>
-
-        <!-- GEN -->
-        <div class="pillhead"><span class="pill pill--gen">GEN</span><span class="note">Total daily generation/charging</span></div>
-        <div class="family">
-          <div class="summary compact">
-            <div class="kpi"><div class="label">GEN — Total</div><div id="genWhDay" class="value">0</div></div>
-            <div class="kpi hidden"><div class="label">GEN — Total</div><div id="genAhDay" class="value">0</div></div>
+          <div class="family">
+            <div class="summary compact">
+              <div class="kpi">
+                <div class="label">GEN — Total</div>
+                <div id="genWhDay" class="value">0</div>
+              </div>
+              <div class="kpi hidden">
+                <div class="label">GEN — Total</div>
+                <div id="genAhDay" class="value">0</div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <!-- BALANCE -->
-        <div class="pillhead"><span class="pill pill--balance">BALANCE</span><span class="note">Net daily balance, trip total, and bank sizing</span></div>
-        <div class="family">
-          <div class="summary compact">
-            <div class="kpi"><div class="label">NET (Gen − Loads)</div><div id="netWhDay" class="value">0</div></div>
-            <div class="kpi hidden"><div class="label">NET (Gen − Loads)</div><div id="netAhDay" class="value">0</div></div>
-            <div class="kpi"><div class="label">Trip energy (loads only)</div><div id="tripWhAh" class="value">0</div></div>
-            <div class="kpi"><div class="label">Battery required — Usable / Nameplate</div><div id="bankAh" class="value">0 / 0</div></div>
-            <div class="kpi"><div class="label">Suggested module layout</div><div id="suggestLayout" class="value">—</div></div>
+          <!-- BALANCE -->
+          <div class="pillhead">
+            <span class="pill pill--balance">BALANCE</span
+            ><span class="note"
+              >Net daily balance, trip total, and bank sizing</span
+            >
           </div>
+          <div class="family">
+            <div class="summary compact">
+              <div class="kpi">
+                <div class="label">NET (Gen − Loads)</div>
+                <div id="netWhDay" class="value">0</div>
+              </div>
+              <div class="kpi hidden">
+                <div class="label">NET (Gen − Loads)</div>
+                <div id="netAhDay" class="value">0</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Trip energy (loads only)</div>
+                <div id="tripWhAh" class="value">0</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Battery required — Usable / Nameplate</div>
+                <div id="bankAh" class="value">0 / 0</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Suggested module layout</div>
+                <div id="suggestLayout" class="value">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RECOMMENDATIONS -->
+          <div class="pillhead">
+            <span class="pill pill--recs">RECOMMENDATIONS</span
+            ><span class="note">Hints based on your model</span>
+          </div>
+          <div class="family">
+            <ul class="muted" style="margin: 0 0 4px 18px">
+              <li>
+                Reduce anchor lighting by switching to LEDs (if not already).
+              </li>
+              <li>
+                Turn off inverter when AC loads are not needed to avoid standby
+                draw.
+              </li>
+              <li>
+                Consider adding solar or runtime if Net is negative on most
+                days.
+              </li>
+            </ul>
+          </div>
+
+          <!-- Hidden voltage mirrors (unchanged) -->
+          <span id="vLabel" class="hidden">12</span>
+          <span id="vLabel2" class="hidden">12</span>
         </div>
+      </section>
+    </main>
 
-        <!-- RECOMMENDATIONS -->
-        <div class="pillhead"><span class="pill pill--recs">RECOMMENDATIONS</span><span class="note">Hints based on your model</span></div>
-        <div class="family">
-          <ul class="muted" style="margin:0 0 4px 18px">
-            <li>Reduce anchor lighting by switching to LEDs (if not already).</li>
-            <li>Turn off inverter when AC loads are not needed to avoid standby draw.</li>
-            <li>Consider adding solar or runtime if Net is negative on most days.</li>
-          </ul>
-          
-        </div>
+    <script>
+      const $ = (sel, ctx = document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
-        <!-- Hidden voltage mirrors (unchanged) -->
-        <span id="vLabel" class="hidden">12</span>
-        <span id="vLabel2" class="hidden">12</span>
-      </div>
-    </section>
-  </main>
+      const DEFAULTS = {
+        chemistry: "LFP",
+        dodByChem: { LFP: 88, AGM: 50, GEL: 55 },
+        voltage: 12,
+        reserve: 20,
+        days: 2,
+        invEff: 90,
+        invStandby: 6,
+        derate: 0,
+      };
+      const CATS = [
+        "Lights",
+        "Nav/Comms",
+        "Instruments",
+        "Pumps",
+        "Comfort",
+        "Galley",
+        "Entertainment",
+        "Misc",
+      ];
 
-  <script>
-    const $ = (sel, ctx=document) => ctx.querySelector(sel);
-    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-
-    const DEFAULTS = { chemistry:'LFP', dodByChem:{LFP:88,AGM:50,GEL:55}, voltage:12, reserve:20, days:2, invEff:90, invStandby:6, derate:0 };
-    const CATS = ['Lights','Nav/Comms','Instruments','Pumps','Comfort','Galley','Entertainment','Misc'];
-
-    const LIB = [
-      libW('Anchor Light (LED)','Lights',2,8,0,100,1,'DC'),
-      libW('Anchor Light (Incandescent 25 W)','Lights',25,8,0,100,1,'DC'),
-      libA('Cabin Lights (LED group avg)','Lights',0.6,3,0,100,1,'DC'),
-      libW('Running/Nav Lights (LED set)','Lights',6,0,4,100,1,'DC'),
-      libA('VHF (standby avg)','Nav/Comms',0.3,0,5,100,1,'DC'),
-      libA('Chartplotter/MFD','Instruments',1.0,0,5,100,1,'DC'),
-      libA('Depth/Wind (avg)','Instruments',0.4,0,5,100,1,'DC'),
-      libA('Cabin Fan','Comfort',0.18,12,0,100,1,'DC'),
-      libW('Laptop (USB-PD 65 W)','Misc',65,4,0,100,1,'DC'),
-      libW('Laptop (AC 65 W via inverter)','Misc',65,4,0,100,1,'AC'),
-      libW('Fridge (60 W @ 35% duty)','Misc',60,24,0,35,1,'DC'),
-      libW('Microwave 900 W (10 min)','Galley',900,.17,0,100,1,'AC'),
-      libW('Coffee Maker 900 W (10 min)','Galley',900,.17,0,100,1,'AC'),
-      libA('Stereo (avg listening)','Entertainment',2.0,6,0,100,1,'DC'),
-    ];
-    function libW(name, cat, watts, hA, hS, duty, qty, type){ return {name, category:cat, type:type||'DC', entry:'W', value:watts, hAnchor:hA, hSail:hS, duty, qty}; }
-    function libA(name, cat, amps, hA, hS, duty, qty, type){ return {name, category:cat, type:type||'DC', entry:'A', value:amps, hAnchor:hA, hSail:hS, duty, qty}; }
-
-    let state = { settings:{...DEFAULTS}, rows:[], gen:[], editId:null };
-    const newId = ()=> Math.random().toString(36).slice(2,10);
-
-    // Default to Ah
-    let unitMode = 'Ah';
-
-    // Refs
-    const voltage = $('#voltage'), chemistry = $('#chemistry'), dod = $('#dod'), reserve = $('#reserve'), days = $('#days'), invEff = $('#invEff'), invStandby = $('#invStandby'), derate = $('#derate');
-    const tbody = $('#tbody'), libSelect = $('#libSelect');
-    const tabLoads = $('#tab-loads'), tabGen = $('#tab-gen'), tabReports = $('#tab-reports'), tabManual = $('#tab-manual');
-    const paneLoads = $('#pane-loads'), paneGen = $('#pane-gen'), paneReports = $('#pane-reports'), paneManual = $('#pane-manual');
-    const genType = $('#gen-type'), genName = $('#gen-name'), genFields = $('#gen-fields'), genHours = $('#gen-hours'), genQty = $('#gen-qty'), genAddBtn = $('#gen-add'), genUpdateBtn = $('#gen-update'), genCancelBtn = $('#gen-cancel'), genEditingLabel = $('#gen-editing'), genBody = $('#genBody');
-
-    voltage.value = DEFAULTS.voltage; chemistry.value = DEFAULTS.chemistry; dod.value = DEFAULTS.dodByChem[DEFAULTS.chemistry];
-
-    chemistry.addEventListener('change', ()=>{ if(!manualDodChange) dod.value = DEFAULTS.dodByChem[chemistry.value] || 80; recalc(); });
-    let manualDodChange=false; dod.addEventListener('input', ()=>{ manualDodChange=true; recalc(); });
-
-    [voltage,reserve,days,invEff,invStandby,derate].forEach(el=> el.addEventListener('input', recalc));
-    $$('input[name="unitMode"]').forEach(r => r.addEventListener('change', e => { unitMode = e.target.value === 'Ah' ? 'Ah' : 'Wh'; recalc(); }));
-
-    function refreshLib(){ libSelect.innerHTML = LIB.map((it,i)=>`<option value="${i}">${escapeHtml(it.name)} — ${it.category}</option>`).join(''); }
-    refreshLib();
-    $('#addFromLib').addEventListener('click', ()=>{ const i=+libSelect.value; if(!isNaN(i)) addRow({...LIB[i]}); });
-    $('#addRow').addEventListener('click', ()=> addRow());
-    $('#exportCsv').addEventListener('click', exportCSV);
-    $('#saveScenario').addEventListener('click', ()=>{ localStorage.setItem('boatSizerScenario', JSON.stringify(state)); toast('Scenario saved to this browser.'); });
-    $('#loadScenario').addEventListener('click', ()=>{ const raw = localStorage.getItem('boatSizerScenario'); if(!raw) return toast('No saved scenario found.'); try{ loadState(JSON.parse(raw)); toast('Scenario loaded.'); }catch(e){ toast('Failed to load scenario.'); } });
-    $('#resetAll').addEventListener('click', ()=>{
-      if(confirm('Clear all rows and reset settings?')){
-        localStorage.removeItem('boatSizerAutosaveV2');
-        state.rows=[]; tbody.innerHTML=''; state.gen=[]; genBody.innerHTML='';
-        seedDefaults();
-        setGenType('Solar'); genName.value='Solar: 200 W × 2'; $('#field-panelW').value=200; $('#field-panels').value=2; $('#field-sun').value=4.5; $('#field-derate').value=15; $('#field-ctrl').value=96; genHours.value=4.5; genQty.value=1; onAddGen();
-        voltage.value=12; chemistry.value='LFP'; dod.value=DEFAULTS.dodByChem['LFP']; reserve.value=20; days.value=2; invEff.value=90; invStandby.value=6; derate.value=0;
-        unitMode='Ah'; $('#unitWh').checked=false; $('#unitAh').checked=true;
-        recalc();
+      const LIB = [
+        libW("Anchor Light (LED)", "Lights", 2, 8, 0, 100, 1, "DC"),
+        libW(
+          "Anchor Light (Incandescent 25 W)",
+          "Lights",
+          25,
+          8,
+          0,
+          100,
+          1,
+          "DC"
+        ),
+        libA("Cabin Lights (LED group avg)", "Lights", 0.6, 3, 0, 100, 1, "DC"),
+        libW("Running/Nav Lights (LED set)", "Lights", 6, 0, 4, 100, 1, "DC"),
+        libA("VHF (standby avg)", "Nav/Comms", 0.3, 0, 5, 100, 1, "DC"),
+        libA("Chartplotter/MFD", "Instruments", 1.0, 0, 5, 100, 1, "DC"),
+        libA("Depth/Wind (avg)", "Instruments", 0.4, 0, 5, 100, 1, "DC"),
+        libA("Cabin Fan", "Comfort", 0.18, 12, 0, 100, 1, "DC"),
+        libW("Laptop (USB-PD 65 W)", "Misc", 65, 4, 0, 100, 1, "DC"),
+        libW("Laptop (AC 65 W via inverter)", "Misc", 65, 4, 0, 100, 1, "AC"),
+        libW("Fridge (60 W @ 35% duty)", "Misc", 60, 24, 0, 35, 1, "DC"),
+        libW("Microwave 900 W (10 min)", "Galley", 900, 0.17, 0, 100, 1, "AC"),
+        libW(
+          "Coffee Maker 900 W (10 min)",
+          "Galley",
+          900,
+          0.17,
+          0,
+          100,
+          1,
+          "AC"
+        ),
+        libA(
+          "Stereo (avg listening)",
+          "Entertainment",
+          2.0,
+          6,
+          0,
+          100,
+          1,
+          "DC"
+        ),
+      ];
+      function libW(name, cat, watts, hA, hS, duty, qty, type) {
+        return {
+          name,
+          category: cat,
+          type: type || "DC",
+          entry: "W",
+          value: watts,
+          hAnchor: hA,
+          hSail: hS,
+          duty,
+          qty,
+        };
       }
-    });
-
-    function setTab(which){
-      if(which==='loads'){
-        tabLoads.classList.add('active'); tabLoads.setAttribute('aria-selected','true');
-        tabGen.classList.remove('active'); tabGen.setAttribute('aria-selected','false');
-        tabReports.classList.remove('active'); tabReports.setAttribute('aria-selected','false');
-        tabManual.classList.remove('active'); tabManual.setAttribute('aria-selected','false');
-        paneLoads.classList.add('active'); paneGen.classList.remove('active'); paneReports.classList.remove('active'); paneManual.classList.remove('active');
-      } else if(which==='gen'){
-        tabGen.classList.add('active'); tabGen.setAttribute('aria-selected','true');
-        tabLoads.classList.remove('active'); tabLoads.setAttribute('aria-selected','false');
-        tabReports.classList.remove('active'); tabReports.setAttribute('aria-selected','false');
-        tabManual.classList.remove('active'); tabManual.setAttribute('aria-selected','false');
-        paneGen.classList.add('active'); paneLoads.classList.remove('active'); paneReports.classList.remove('active'); paneManual.classList.remove('active');
-      } else if(which==='reports'){
-        tabReports.classList.add('active'); tabReports.setAttribute('aria-selected','true');
-        tabLoads.classList.remove('active'); tabLoads.setAttribute('aria-selected','false');
-        tabGen.classList.remove('active'); tabGen.setAttribute('aria-selected','false');
-        tabManual.classList.remove('active'); tabManual.setAttribute('aria-selected','false');
-        paneReports.classList.add('active'); paneLoads.classList.remove('active'); paneGen.classList.remove('active'); paneManual.classList.remove('active');
-        recalc();
-      } else if(which==='manual'){
-        tabManual.classList.add('active'); tabManual.setAttribute('aria-selected','true');
-        tabLoads.classList.remove('active'); tabLoads.setAttribute('aria-selected','false');
-        tabGen.classList.remove('active'); tabGen.setAttribute('aria-selected','false');
-        tabReports.classList.remove('active'); tabReports.setAttribute('aria-selected','false');
-        paneManual.classList.add('active'); paneLoads.classList.remove('active'); paneGen.classList.remove('active'); paneReports.classList.remove('active');
+      function libA(name, cat, amps, hA, hS, duty, qty, type) {
+        return {
+          name,
+          category: cat,
+          type: type || "DC",
+          entry: "A",
+          value: amps,
+          hAnchor: hA,
+          hSail: hS,
+          duty,
+          qty,
+        };
       }
-    }
-    tabLoads.addEventListener('click', ()=>setTab('loads'));
-    tabGen.addEventListener('click', ()=>setTab('gen'));
-    tabReports.addEventListener('click', ()=>setTab('reports'));
-    tabManual.addEventListener('click', ()=>setTab('manual'));
 
-    function addRow(row){
-      const r = Object.assign({ name:'New Load', category:CATS[0], type:'DC', entry:'W', value:1, hAnchor:0, hSail:0, duty:100, qty:1 }, row||{});
-      state.rows.push(r);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
+      let state = {
+        settings: { ...DEFAULTS },
+        rows: [],
+        gen: [],
+        editId: null,
+      };
+      const newId = () => Math.random().toString(36).slice(2, 10);
+
+      // Default to Ah
+      let unitMode = "Ah";
+
+      // Refs
+      const voltage = $("#voltage"),
+        chemistry = $("#chemistry"),
+        dod = $("#dod"),
+        reserve = $("#reserve"),
+        days = $("#days"),
+        invEff = $("#invEff"),
+        invStandby = $("#invStandby"),
+        derate = $("#derate");
+      const tbody = $("#tbody"),
+        libSelect = $("#libSelect");
+      const tabLoads = $("#tab-loads"),
+        tabGen = $("#tab-gen"),
+        tabReports = $("#tab-reports"),
+        tabManual = $("#tab-manual"),
+        tabRange = $("#tab-range");
+      const paneLoads = $("#pane-loads"),
+        paneGen = $("#pane-gen"),
+        paneReports = $("#pane-reports"),
+        paneManual = $("#pane-manual"),
+        paneRange = $("#pane-range");
+      const genType = $("#gen-type"),
+        genName = $("#gen-name"),
+        genFields = $("#gen-fields"),
+        genHours = $("#gen-hours"),
+        genQty = $("#gen-qty"),
+        genAddBtn = $("#gen-add"),
+        genUpdateBtn = $("#gen-update"),
+        genCancelBtn = $("#gen-cancel"),
+        genEditingLabel = $("#gen-editing"),
+        genBody = $("#genBody");
+
+      voltage.value = DEFAULTS.voltage;
+      chemistry.value = DEFAULTS.chemistry;
+      dod.value = DEFAULTS.dodByChem[DEFAULTS.chemistry];
+
+      chemistry.addEventListener("change", () => {
+        if (!manualDodChange)
+          dod.value = DEFAULTS.dodByChem[chemistry.value] || 80;
+        recalc();
+      });
+      let manualDodChange = false;
+      dod.addEventListener("input", () => {
+        manualDodChange = true;
+        recalc();
+      });
+
+      [voltage, reserve, days, invEff, invStandby, derate].forEach((el) =>
+        el.addEventListener("input", recalc)
+      );
+      $$('input[name="unitMode"]').forEach((r) =>
+        r.addEventListener("change", (e) => {
+          unitMode = e.target.value === "Ah" ? "Ah" : "Wh";
+          recalc();
+        })
+      );
+
+      function refreshLib() {
+        libSelect.innerHTML = LIB.map(
+          (it, i) =>
+            `<option value="${i}">${escapeHtml(it.name)} — ${
+              it.category
+            }</option>`
+        ).join("");
+      }
+      refreshLib();
+      $("#addFromLib").addEventListener("click", () => {
+        const i = +libSelect.value;
+        if (!isNaN(i)) addRow({ ...LIB[i] });
+      });
+      $("#addRow").addEventListener("click", () => addRow());
+      $("#exportCsv").addEventListener("click", exportCSV);
+      $("#saveScenario").addEventListener("click", () => {
+        localStorage.setItem("boatSizerScenario", JSON.stringify(state));
+        toast("Scenario saved to this browser.");
+      });
+      $("#loadScenario").addEventListener("click", () => {
+        const raw = localStorage.getItem("boatSizerScenario");
+        if (!raw) return toast("No saved scenario found.");
+        try {
+          loadState(JSON.parse(raw));
+          toast("Scenario loaded.");
+        } catch (e) {
+          toast("Failed to load scenario.");
+        }
+      });
+      $("#resetAll").addEventListener("click", () => {
+        if (confirm("Clear all rows and reset settings?")) {
+          localStorage.removeItem("boatSizerAutosaveV2");
+          state.rows = [];
+          tbody.innerHTML = "";
+          state.gen = [];
+          genBody.innerHTML = "";
+          seedDefaults();
+          setGenType("Solar");
+          genName.value = "Solar: 200 W × 2";
+          $("#field-panelW").value = 200;
+          $("#field-panels").value = 2;
+          $("#field-sun").value = 4.5;
+          $("#field-derate").value = 15;
+          $("#field-ctrl").value = 96;
+          genHours.value = 4.5;
+          genQty.value = 1;
+          onAddGen();
+          voltage.value = 12;
+          chemistry.value = "LFP";
+          dod.value = DEFAULTS.dodByChem["LFP"];
+          reserve.value = 20;
+          days.value = 2;
+          invEff.value = 90;
+          invStandby.value = 6;
+          derate.value = 0;
+          unitMode = "Ah";
+          $("#unitWh").checked = false;
+          $("#unitAh").checked = true;
+          recalc();
+        }
+      });
+
+      function setTab(which) {
+        if (which === "loads") {
+          tabLoads.classList.add("active");
+          tabLoads.setAttribute("aria-selected", "true");
+          tabGen.classList.remove("active");
+          tabGen.setAttribute("aria-selected", "false");
+          tabReports.classList.remove("active");
+          tabReports.setAttribute("aria-selected", "false");
+          tabRange.classList.remove("active");
+          tabRange.setAttribute("aria-selected", "false");
+          tabManual.classList.remove("active");
+          tabManual.setAttribute("aria-selected", "false");
+          paneLoads.classList.add("active");
+          paneGen.classList.remove("active");
+          paneReports.classList.remove("active");
+          paneRange.classList.remove("active");
+          paneManual.classList.remove("active");
+        } else if (which === "gen") {
+          tabGen.classList.add("active");
+          tabGen.setAttribute("aria-selected", "true");
+          tabLoads.classList.remove("active");
+          tabLoads.setAttribute("aria-selected", "false");
+          tabReports.classList.remove("active");
+          tabReports.setAttribute("aria-selected", "false");
+          tabRange.classList.remove("active");
+          tabRange.setAttribute("aria-selected", "false");
+          tabManual.classList.remove("active");
+          tabManual.setAttribute("aria-selected", "false");
+          paneGen.classList.add("active");
+          paneLoads.classList.remove("active");
+          paneReports.classList.remove("active");
+          paneRange.classList.remove("active");
+          paneManual.classList.remove("active");
+        } else if (which === "reports") {
+          tabReports.classList.add("active");
+          tabReports.setAttribute("aria-selected", "true");
+          tabLoads.classList.remove("active");
+          tabLoads.setAttribute("aria-selected", "false");
+          tabGen.classList.remove("active");
+          tabGen.setAttribute("aria-selected", "false");
+          tabRange.classList.remove("active");
+          tabRange.setAttribute("aria-selected", "false");
+          tabManual.classList.remove("active");
+          tabManual.setAttribute("aria-selected", "false");
+          paneReports.classList.add("active");
+          paneLoads.classList.remove("active");
+          paneGen.classList.remove("active");
+          paneRange.classList.remove("active");
+          paneManual.classList.remove("active");
+          recalc();
+        } else if (which === "range") {
+          tabRange.classList.add("active");
+          tabRange.setAttribute("aria-selected", "true");
+          tabLoads.classList.remove("active");
+          tabLoads.setAttribute("aria-selected", "false");
+          tabGen.classList.remove("active");
+          tabGen.setAttribute("aria-selected", "false");
+          tabReports.classList.remove("active");
+          tabReports.setAttribute("aria-selected", "false");
+          tabManual.classList.remove("active");
+          tabManual.setAttribute("aria-selected", "false");
+          paneRange.classList.add("active");
+          paneLoads.classList.remove("active");
+          paneGen.classList.remove("active");
+          paneReports.classList.remove("active");
+          paneManual.classList.remove("active");
+        } else if (which === "manual") {
+          tabManual.classList.add("active");
+          tabManual.setAttribute("aria-selected", "true");
+          tabLoads.classList.remove("active");
+          tabLoads.setAttribute("aria-selected", "false");
+          tabGen.classList.remove("active");
+          tabGen.setAttribute("aria-selected", "false");
+          tabReports.classList.remove("active");
+          tabReports.setAttribute("aria-selected", "false");
+          tabRange.classList.remove("active");
+          tabRange.setAttribute("aria-selected", "false");
+          paneManual.classList.add("active");
+          paneLoads.classList.remove("active");
+          paneGen.classList.remove("active");
+          paneReports.classList.remove("active");
+          paneRange.classList.remove("active");
+        }
+      }
+      tabLoads.addEventListener("click", () => setTab("loads"));
+      tabGen.addEventListener("click", () => setTab("gen"));
+      tabReports.addEventListener("click", () => setTab("reports"));
+      tabRange.addEventListener("click", () => setTab("range"));
+      tabManual.addEventListener("click", () => setTab("manual"));
+
+      function addRow(row) {
+        const r = Object.assign(
+          {
+            name: "New Load",
+            category: CATS[0],
+            type: "DC",
+            entry: "W",
+            value: 1,
+            hAnchor: 0,
+            hSail: 0,
+            duty: 100,
+            qty: 1,
+          },
+          row || {}
+        );
+        state.rows.push(r);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
         <td><input aria-label="Name" value="${escapeAttr(r.name)}"/></td>
         <td>${catSelect(r.category)}</td>
         <td>
           <select aria-label="Type">
-            <option value="DC" ${r.type==='DC'?'selected':''}>DC</option>
-            <option value="AC" ${r.type==='AC'?'selected':''}>AC via inverter</option>
+            <option value="DC" ${r.type === "DC" ? "selected" : ""}>DC</option>
+            <option value="AC" ${
+              r.type === "AC" ? "selected" : ""
+            }>AC via inverter</option>
           </select>
         </td>
         <td>
           <select aria-label="Entry">
-            <option value="W" ${r.entry==='W'?'selected':''}>Watts</option>
-            <option value="A" ${r.entry==='A'?'selected':''}>Amps</option>
+            <option value="W" ${
+              r.entry === "W" ? "selected" : ""
+            }>Watts</option>
+            <option value="A" ${r.entry === "A" ? "selected" : ""}>Amps</option>
           </select>
         </td>
-        <td><input type="number" step="0.01" class="number" aria-label="Value" value="${r.value}"/></td>
-        <td><input type="number" step="0.1" class="number" aria-label="Hours at Anchor" value="${r.hAnchor}"/></td>
-        <td><input type="number" step="0.1" class="number" aria-label="Hours Underway" value="${r.hSail}"/></td>
-        <td><input type="number" step="1" class="qty" aria-label="Duty %" value="${r.duty}"/></td>
-        <td><input type="number" step="1" class="qty" aria-label="Qty" value="${r.qty}"/></td>
+        <td><input type="number" step="0.01" class="number" aria-label="Value" value="${
+          r.value
+        }"/></td>
+        <td><input type="number" step="0.1" class="number" aria-label="Hours at Anchor" value="${
+          r.hAnchor
+        }"/></td>
+        <td><input type="number" step="0.1" class="number" aria-label="Hours Underway" value="${
+          r.hSail
+        }"/></td>
+        <td><input type="number" step="1" class="qty" aria-label="Duty %" value="${
+          r.duty
+        }"/></td>
+        <td><input type="number" step="1" class="qty" aria-label="Qty" value="${
+          r.qty
+        }"/></td>
         <td class="center"><button title="Delete" aria-label="Delete row">✕</button></td>`;
-      tbody.appendChild(tr);
-      const [iName,iCat,iType,iEntry,iVal,iHA,iHS,iDuty,iQty,iDel] = [
-        tr.children[0].firstElementChild, tr.children[1].firstElementChild, tr.children[2].firstElementChild, tr.children[3].firstElementChild, tr.children[4].firstElementChild,
-        tr.children[5].firstElementChild, tr.children[6].firstElementChild, tr.children[7].firstElementChild, tr.children[8].firstElementChild, tr.children[9].firstElementChild
-      ];
-      const sync = ()=>{ r.name=iName.value; r.category=iCat.value; r.type=iType.value; r.entry=iEntry.value;
-        r.value=num(iVal.value); r.hAnchor=num(iHA.value); r.hSail=num(iHS.value);
-        r.duty=clamp(num(iDuty.value),0,100); r.qty=Math.max(0, Math.round(num(iQty.value))||0); recalc(); };
-      [iName,iCat,iType,iEntry,iVal,iHA,iHS,iDuty,iQty].forEach(el=> el.addEventListener('input', sync));
-      iDel.addEventListener('click', ()=>{ state.rows = state.rows.filter(x=>x!==r); tr.remove(); recalc(); });
-      recalc();
-    }
-    function catSelect(val){ return `<select>${CATS.map(c=>`<option ${c===val?'selected':''}>${c}</option>`).join('')}</select>`; }
+        tbody.appendChild(tr);
+        const [iName, iCat, iType, iEntry, iVal, iHA, iHS, iDuty, iQty, iDel] =
+          [
+            tr.children[0].firstElementChild,
+            tr.children[1].firstElementChild,
+            tr.children[2].firstElementChild,
+            tr.children[3].firstElementChild,
+            tr.children[4].firstElementChild,
+            tr.children[5].firstElementChild,
+            tr.children[6].firstElementChild,
+            tr.children[7].firstElementChild,
+            tr.children[8].firstElementChild,
+            tr.children[9].firstElementChild,
+          ];
+        const sync = () => {
+          r.name = iName.value;
+          r.category = iCat.value;
+          r.type = iType.value;
+          r.entry = iEntry.value;
+          r.value = num(iVal.value);
+          r.hAnchor = num(iHA.value);
+          r.hSail = num(iHS.value);
+          r.duty = clamp(num(iDuty.value), 0, 100);
+          r.qty = Math.max(0, Math.round(num(iQty.value)) || 0);
+          recalc();
+        };
+        [iName, iCat, iType, iEntry, iVal, iHA, iHS, iDuty, iQty].forEach(
+          (el) => el.addEventListener("input", sync)
+        );
+        iDel.addEventListener("click", () => {
+          state.rows = state.rows.filter((x) => x !== r);
+          tr.remove();
+          recalc();
+        });
+        recalc();
+      }
+      function catSelect(val) {
+        return `<select>${CATS.map(
+          (c) => `<option ${c === val ? "selected" : ""}>${c}</option>`
+        ).join("")}</select>`;
+      }
 
-    function setGenType(type){ genType.value = type; renderGenFields(type); }
-    function renderGenFields(type){
-      if(type==='Solar'){
-        genFields.innerHTML = `
+      function setGenType(type) {
+        genType.value = type;
+        renderGenFields(type);
+      }
+      function renderGenFields(type) {
+        if (type === "Solar") {
+          genFields.innerHTML = `
           <div class="pair"><label for="field-panelW">Panel wattage (W)</label><input id="field-panelW" type="number" min="0" step="1" value="200"></div>
           <div class="pair"><label for="field-panels"># of panels</label><input id="field-panels" type="number" min="1" step="1" value="2"></div>
           <div class="pair"><label for="field-sun">Sun hours (h/day)</label><input id="field-sun" type="number" min="0" step="0.1" value="4.5"></div>
           <div class="pair"><label for="field-derate">Derate (%)</label><input id="field-derate" type="number" min="0" max="100" step="1" value="15"></div>
           <div class="pair"><label for="field-ctrl">Controller eff (%)</label><input id="field-ctrl" type="number" min="0" max="100" step="1" value="96"></div>`;
-        genHours.value = 4.5;
-      }
-      if(type==='Wind'){
-        genFields.innerHTML = `
+          genHours.value = 4.5;
+        }
+        if (type === "Wind") {
+          genFields.innerHTML = `
           <div class="pair"><label for="field-rated">Rated power (W)</label><input id="field-rated" type="number" min="0" step="1" value="400"></div>
           <div class="pair"><label for="field-cf">Capacity factor (%)</label><input id="field-cf" type="number" min="0" max="100" step="1" value="20"></div>`;
-        genHours.value = 24;
-      }
-      if(type==='Alternator'){
-        genFields.innerHTML = `<div class="pair"><label for="field-amps">DC charge current (A)</label><input id="field-amps" type="number" min="0" step="0.1" value="40"></div>`;
-        genHours.value = 2;
-      }
-      if(type==='AC Charger'){
-        genFields.innerHTML = `
+          genHours.value = 24;
+        }
+        if (type === "Alternator") {
+          genFields.innerHTML = `<div class="pair"><label for="field-amps">DC charge current (A)</label><input id="field-amps" type="number" min="0" step="0.1" value="40"></div>`;
+          genHours.value = 2;
+        }
+        if (type === "AC Charger") {
+          genFields.innerHTML = `
           <div class="pair"><label for="field-amps">DC charge current (A)</label><input id="field-amps" type="number" min="0" step="0.1" value="30"></div>
           <div class="pair"><label for="field-eff">Charging efficiency (%)</label><input id="field-eff" type="number" min="0" max="100" step="1" value="92"></div>`;
-        genHours.value = 4;
+          genHours.value = 4;
+        }
       }
-    }
-    genType.addEventListener('change', ()=> renderGenFields(genType.value));
+      genType.addEventListener("change", () => renderGenFields(genType.value));
 
-    function readGenForm(){
-      const type = genType.value;
-      const base = { id: state.editId ?? newId(), type, name: genName.value.trim() || type, qty: Math.max(1, Math.round(num(genQty.value)||1)), hours: Math.max(0, num(genHours.value)||0) };
-      if(type==='Solar') return {...base, panelW:num($('#field-panelW').value), panels:Math.max(1,Math.round(num($('#field-panels').value)||1)), sunHrs:num($('#field-sun').value), deratePct:clamp(num($('#field-derate').value),0,100), ctrlEffPct:clamp(num($('#field-ctrl').value),0,100)};
-      if(type==='Wind')  return {...base, ratedW:num($('#field-rated').value), capacityPct:clamp(num($('#field-cf').value),0,100)};
-      if(type==='Alternator') return {...base, dcAmps:num($('#field-amps').value)};
-      if(type==='AC Charger') return {...base, dcAmps:num($('#field-amps').value), effPct:clamp(num($('#field-eff').value),0,100)};
-      return base;
-    }
+      function readGenForm() {
+        const type = genType.value;
+        const base = {
+          id: state.editId ?? newId(),
+          type,
+          name: genName.value.trim() || type,
+          qty: Math.max(1, Math.round(num(genQty.value) || 1)),
+          hours: Math.max(0, num(genHours.value) || 0),
+        };
+        if (type === "Solar")
+          return {
+            ...base,
+            panelW: num($("#field-panelW").value),
+            panels: Math.max(1, Math.round(num($("#field-panels").value) || 1)),
+            sunHrs: num($("#field-sun").value),
+            deratePct: clamp(num($("#field-derate").value), 0, 100),
+            ctrlEffPct: clamp(num($("#field-ctrl").value), 0, 100),
+          };
+        if (type === "Wind")
+          return {
+            ...base,
+            ratedW: num($("#field-rated").value),
+            capacityPct: clamp(num($("#field-cf").value), 0, 100),
+          };
+        if (type === "Alternator")
+          return { ...base, dcAmps: num($("#field-amps").value) };
+        if (type === "AC Charger")
+          return {
+            ...base,
+            dcAmps: num($("#field-amps").value),
+            effPct: clamp(num($("#field-eff").value), 0, 100),
+          };
+        return base;
+      }
 
-    function onAddGen(){ const entry = readGenForm(); state.gen.push(entry); clearGenForm(); renderGenList(); recalc(); }
-    genAddBtn.addEventListener('click', onAddGen);
-    function onUpdateGen(){ const entry = readGenForm(); const idx = state.gen.findIndex(x=>x.id===entry.id); if(idx>=0){ state.gen[idx]=entry; } clearGenForm(); renderGenList(); recalc(); }
-    genUpdateBtn.addEventListener('click', onUpdateGen);
-    genCancelBtn.addEventListener('click', clearGenForm);
+      function onAddGen() {
+        const entry = readGenForm();
+        state.gen.push(entry);
+        clearGenForm();
+        renderGenList();
+        recalc();
+      }
+      genAddBtn.addEventListener("click", onAddGen);
+      function onUpdateGen() {
+        const entry = readGenForm();
+        const idx = state.gen.findIndex((x) => x.id === entry.id);
+        if (idx >= 0) {
+          state.gen[idx] = entry;
+        }
+        clearGenForm();
+        renderGenList();
+        recalc();
+      }
+      genUpdateBtn.addEventListener("click", onUpdateGen);
+      genCancelBtn.addEventListener("click", clearGenForm);
 
-    function clearGenForm(){ state.editId=null; genEditingLabel.textContent=''; genUpdateBtn.style.display='none'; genCancelBtn.style.display='none'; genAddBtn.style.display='inline-block'; genName.value=''; genQty.value=1; setGenType(genType.value || 'Solar'); }
+      function clearGenForm() {
+        state.editId = null;
+        genEditingLabel.textContent = "";
+        genUpdateBtn.style.display = "none";
+        genCancelBtn.style.display = "none";
+        genAddBtn.style.display = "inline-block";
+        genName.value = "";
+        genQty.value = 1;
+        setGenType(genType.value || "Solar");
+      }
 
-    function editGen(id){
-      const e = state.gen.find(x=>x.id===id); if(!e) return;
-      state.editId=id; genAddBtn.style.display='none'; genUpdateBtn.style.display='inline-block'; genCancelBtn.style.display='inline-block'; genEditingLabel.textContent=`Editing: ${e.name}`;
-      setGenType(e.type); genName.value=e.name; genHours.value=e.hours; genQty.value=e.qty;
-      if(e.type==='Solar'){ $('#field-panelW').value=e.panelW; $('#field-panels').value=e.panels; $('#field-sun').value=e.sunHrs; $('#field-derate').value=e.deratePct; $('#field-ctrl').value=e.ctrlEffPct; }
-      else if(e.type==='Wind'){ $('#field-rated').value=e.ratedW; $('#field-cf').value=e.capacityPct; }
-      else if(e.type==='Alternator'){ $('#field-amps').value=e.dcAmps; }
-      else if(e.type==='AC Charger'){ $('#field-amps').value=e.dcAmps; $('#field-eff').value=e.effPct; }
-    }
-    function delGen(id){ state.gen = state.gen.filter(x=>x.id!==id); renderGenList(); recalc(); }
+      function editGen(id) {
+        const e = state.gen.find((x) => x.id === id);
+        if (!e) return;
+        state.editId = id;
+        genAddBtn.style.display = "none";
+        genUpdateBtn.style.display = "inline-block";
+        genCancelBtn.style.display = "inline-block";
+        genEditingLabel.textContent = `Editing: ${e.name}`;
+        setGenType(e.type);
+        genName.value = e.name;
+        genHours.value = e.hours;
+        genQty.value = e.qty;
+        if (e.type === "Solar") {
+          $("#field-panelW").value = e.panelW;
+          $("#field-panels").value = e.panels;
+          $("#field-sun").value = e.sunHrs;
+          $("#field-derate").value = e.deratePct;
+          $("#field-ctrl").value = e.ctrlEffPct;
+        } else if (e.type === "Wind") {
+          $("#field-rated").value = e.ratedW;
+          $("#field-cf").value = e.capacityPct;
+        } else if (e.type === "Alternator") {
+          $("#field-amps").value = e.dcAmps;
+        } else if (e.type === "AC Charger") {
+          $("#field-amps").value = e.dcAmps;
+          $("#field-eff").value = e.effPct;
+        }
+      }
+      function delGen(id) {
+        state.gen = state.gen.filter((x) => x.id !== id);
+        renderGenList();
+        recalc();
+      }
 
-    function detailsText(e){
-      if(e.type==='Solar') return `${e.panelW}W × ${e.panels}, ${e.sunHrs}h, −${e.deratePct}% derate, ${e.ctrlEffPct}% ctrl`;
-      if(e.type==='Wind') return `${e.ratedW}W @ ${e.capacityPct}% × ${e.hours}h`;
-      if(e.type==='Alternator') return `${e.dcAmps}A × ${e.hours}h`;
-      if(e.type==='AC Charger') return `${e.dcAmps}A × ${e.hours}h @ ${e.effPct}%`;
-      return '';
-    }
+      function detailsText(e) {
+        if (e.type === "Solar")
+          return `${e.panelW}W × ${e.panels}, ${e.sunHrs}h, −${e.deratePct}% derate, ${e.ctrlEffPct}% ctrl`;
+        if (e.type === "Wind")
+          return `${e.ratedW}W @ ${e.capacityPct}% × ${e.hours}h`;
+        if (e.type === "Alternator") return `${e.dcAmps}A × ${e.hours}h`;
+        if (e.type === "AC Charger")
+          return `${e.dcAmps}A × ${e.hours}h @ ${e.effPct}%`;
+        return "";
+      }
 
-    function renderGenList(){
-      const v = state.settings.voltage || DEFAULTS.voltage;
-      genBody.innerHTML = '';
-      for(const e of state.gen){
-        const wh = genEntryWh(e, v), ah = wh / v;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
+      function renderGenList() {
+        const v = state.settings.voltage || DEFAULTS.voltage;
+        genBody.innerHTML = "";
+        for (const e of state.gen) {
+          const wh = genEntryWh(e, v),
+            ah = wh / v;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
           <td>${escapeHtml(e.name)}</td>
           <td><span class="badge">${e.type}</span></td>
           <td>${escapeHtml(detailsText(e))}</td>
@@ -715,239 +1901,576 @@
           <td class="center">${fmt(wh)}</td>
           <td class="center">${fmt(ah)}</td>
           <td class="actions center"><span class="link" data-act="edit">Edit</span> &nbsp;|&nbsp; <span class="link danger" data-act="del">Delete</span></td>`;
-        tr.addEventListener('click', (ev)=>{ const act=ev.target?.dataset?.act; if(act==='edit') editGen(e.id); if(act==='del') delGen(e.id); });
-        genBody.appendChild(tr);
+          tr.addEventListener("click", (ev) => {
+            const act = ev.target?.dataset?.act;
+            if (act === "edit") editGen(e.id);
+            if (act === "del") delGen(e.id);
+          });
+          genBody.appendChild(tr);
+        }
       }
-    }
 
-    function genEntryWh(e, v){
-      const qty = e.qty || 1;
-      if(e.type==='Solar'){ const {panelW=0, panels=0, sunHrs=0, deratePct=0, ctrlEffPct=100}=e; return qty*(panelW*panels*sunHrs*(1-(deratePct/100))*(ctrlEffPct/100)); }
-      if(e.type==='Wind'){ const {ratedW=0, capacityPct=0, hours=0}=e; return qty*(ratedW*(capacityPct/100)*hours); }
-      if(e.type==='Alternator'){ const {dcAmps=0, hours=0}=e; return qty*(dcAmps*v*hours); }
-      if(e.type==='AC Charger'){ const {dcAmps=0, hours=0, effPct=100}=e; return qty*(dcAmps*v*hours*(effPct/100)); }
-      return 0;
-    }
-
-    function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
-    function clamp(x,a,b){ return Math.min(b, Math.max(a,x)); }
-    function escapeHtml(s=''){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-    function escapeAttr(s=''){return escapeHtml(s).replace(/'/g,'&#39;')}
-    function fmt(x){ if(!isFinite(x)) return '0'; if(Math.abs(x)<10) return x.toFixed(2); if(Math.abs(x)<100) return x.toFixed(1); return Math.round(x).toLocaleString(); }
-    function toast(msg){ const t=document.createElement('div'); t.textContent=msg; Object.assign(t.style,{position:'fixed',bottom:'16px',left:'50%',transform:'translateX(-50%)',padding:'8px 12px',background:'#0c1626',color:'var(--text)',border:'1px solid var(--line)',borderRadius:'10px'}); document.body.appendChild(t); setTimeout(()=>t.remove(),1600); }
-
-    function setKpiPair(whId, ahId, whVal, ahVal){
-      const whEl = $('#'+whId).closest('.kpi'); const ahEl = $('#'+ahId).closest('.kpi');
-      if(unitMode==='Wh'){ $('#'+whId).textContent = `${fmt(whVal)} Wh/day`; whEl.classList.remove('hidden'); ahEl.classList.add('hidden'); }
-      else { $('#'+ahId).textContent = `${fmt(ahVal)} Ah/day`; ahEl.classList.remove('hidden'); whEl.classList.add('hidden'); }
-    }
-
-    function recalc(){
-      state.settings = {
-        voltage:+voltage.value, chemistry:chemistry.value, dod:clamp(num(dod.value),10,99),
-        reserve:clamp(num(reserve.value),0,100), days:Math.max(1,Math.round(num(days.value)||1)),
-        invEff:clamp(num(invEff.value),50,100), invStandby:Math.max(0,num(invStandby.value)||0), derate:clamp(num(derate.value),0,80)
-      };
-      $('#vLabel').textContent = state.settings.voltage; $('#vLabel2').textContent = state.settings.voltage;
-
-      let anchorWh=0, sailWh=0, acAnchorHours=0, acSailHours=0;
-      for(const r of state.rows){
-        const duty=(r.duty||0)/100, qty=r.qty||0;
-        const whA=rowWh(r, r.hAnchor, duty, qty), whS=rowWh(r, r.hSail, duty, qty);
-        if(r.type==='AC'){ acAnchorHours=Math.max(acAnchorHours,r.hAnchor||0); acSailHours=Math.max(acSailHours,r.hSail||0); }
-        anchorWh+=whA; sailWh+=whS;
+      function genEntryWh(e, v) {
+        const qty = e.qty || 1;
+        if (e.type === "Solar") {
+          const {
+            panelW = 0,
+            panels = 0,
+            sunHrs = 0,
+            deratePct = 0,
+            ctrlEffPct = 100,
+          } = e;
+          return (
+            qty *
+            (panelW *
+              panels *
+              sunHrs *
+              (1 - deratePct / 100) *
+              (ctrlEffPct / 100))
+          );
+        }
+        if (e.type === "Wind") {
+          const { ratedW = 0, capacityPct = 0, hours = 0 } = e;
+          return qty * (ratedW * (capacityPct / 100) * hours);
+        }
+        if (e.type === "Alternator") {
+          const { dcAmps = 0, hours = 0 } = e;
+          return qty * (dcAmps * v * hours);
+        }
+        if (e.type === "AC Charger") {
+          const { dcAmps = 0, hours = 0, effPct = 100 } = e;
+          return qty * (dcAmps * v * hours * (effPct / 100));
+        }
+        return 0;
       }
-      const standbyWhDay = state.settings.invStandby * (acAnchorHours + acSailHours);
-      const whDayTotal = anchorWh + sailWh + standbyWhDay;
-      const ahDayTotal = whDayTotal / state.settings.voltage;
 
-      let genWhDay = 0; for(const e of state.gen){ genWhDay += genEntryWh(e, state.settings.voltage); }
-      const genAhDay = genWhDay / state.settings.voltage;
-
-      const netWh = genWhDay - whDayTotal, netAh = genAhDay - ahDayTotal;
-      const tripWh = whDayTotal * state.settings.days, tripAh = ahDayTotal * state.settings.days;
-
-      const usableDoD = state.settings.dod/100;
-      const withReserveAh = tripAh * (1 + state.settings.reserve/100);
-      let nameplateAh = withReserveAh / usableDoD;
-      if(state.settings.derate>0){ nameplateAh = nameplateAh / (1 - state.settings.derate/100); }
-      const withReserveWh = withReserveAh * state.settings.voltage, nameplateWh = nameplateAh * state.settings.voltage;
-      const modules100 = Math.max(1, Math.ceil(nameplateAh/100)); const layout = `${modules100} × 100 Ah @ ${state.settings.voltage} V`;
-
-      const netWhEl = $('#netWhDay').closest('.kpi'); const netAhEl = $('#netAhDay').closest('.kpi');
-      [netWhEl, netAhEl].forEach(el=> el.classList.remove('ok','warn','bad'));
-      const netMetric = (unitMode==='Wh') ? netWh : netAh;
-      const threshold = (unitMode==='Wh') ? 200 : (200 / state.settings.voltage);
-      const targetEl = (unitMode==='Wh') ? netWhEl : netAhEl;
-      if(netMetric > 0) targetEl.classList.add('ok'); else if(Math.abs(netMetric) < threshold) targetEl.classList.add('warn'); else targetEl.classList.add('bad');
-
-      setKpiPair('whDay','ahDay',whDayTotal,ahDayTotal);
-      setKpiPair('genWhDay','genAhDay',genWhDay,genAhDay);
-      setKpiPair('netWhDay','netAhDay',netWh,netAh);
-
-      $('#tripWhAh').textContent = (unitMode==='Wh') ? `${fmt(tripWh)} Wh` : `${fmt(tripAh)} Ah`;
-      $('#bankAh').textContent = (unitMode==='Wh') ? `${fmt(withReserveWh)} Wh / ${fmt(nameplateWh)} Wh` : `${fmt(withReserveAh)} Ah / ${fmt(nameplateAh)} Ah`;
-      $('#anchorWhAh').textContent = (unitMode==='Wh') ? `${fmt(anchorWh)} Wh/day` : `${fmt(anchorWh / state.settings.voltage)} Ah/day`;
-      $('#sailWhAh').textContent = (unitMode==='Wh') ? `${fmt(sailWh)} Wh/day` : `${fmt(sailWh / state.settings.voltage)} Ah/day`;
-      $('#invStandbyWh').textContent = (unitMode==='Wh') ? `${fmt(standbyWhDay)} Wh/day` : `${fmt(standbyWhDay / state.settings.voltage)} Ah/day`;
-      $('#suggestLayout').textContent = layout;
-
-      const autosave = { settings: state.settings, rows: state.rows, gen: state.gen };
-      localStorage.setItem('boatSizerAutosaveV2', JSON.stringify(autosave));
-
-      renderGenList();
-
-      const d = state.settings.days;
-      const labels = Array.from({length:d}, (_,i)=> `Day ${i+1}`);
-      const generationWh = Array.from({length:d}, ()=> genWhDay);
-      const consumptionWh = Array.from({length:d}, ()=> whDayTotal);
-      if (typeof window.renderReports === 'function') {
-        window.renderReports({ labels, generationWh, consumptionWh, systemVoltage: state.settings.voltage });
+      function num(v) {
+        const n = parseFloat(v);
+        return isNaN(n) ? 0 : n;
       }
-    }
-
-    function rowWh(r, hours, duty, qty){
-      const v = state.settings.voltage, eff = state.settings.invEff/100;
-      const h = Math.max(0, hours||0) * Math.max(0, duty||0) * (qty||0);
-      if(h<=0) return 0;
-      if(r.type==='AC'){ if(r.entry==='W') return (r.value||0)*h/eff; return (r.value||0)*120*h/eff; }
-      else { if(r.entry==='W') return (r.value||0)*h; return (r.value||0)*v*h; }
-    }
-
-    function exportCSV(){
-      const headers=['Name','Category','Type','Entry','Value','Hours_Anchor','Hours_Underway','Duty_%','Qty'];
-      const rows = state.rows.map(r=>[r.name, r.category, r.type, r.entry, r.value, r.hAnchor, r.hSail, r.duty, r.qty]);
-      const netText = unitMode==='Wh' ? $('#netWhDay').textContent : $('#netAhDay').textContent;
-      const totals=[[],['Summary','','','',''],['Loads','','','', (unitMode==='Wh'? $('#whDay').textContent : $('#ahDay').textContent)],['Gen','','','',(unitMode==='Wh'? $('#genWhDay').textContent : $('#genAhDay').textContent)],['Net','','','',netText],['Trip (loads only)','','','',$('#tripWhAh').textContent],['Usable (bank)','','','',$('#bankAh').textContent.split('/')[0].trim()],['Nameplate (bank)','','','',$('#bankAh').textContent.split('/')[1].trim()]];
-      const csv = [headers,...rows,...totals].map(r=>r.map(v=>String(v??'').replace(/"/g,'""')).map(v=>`"${v}"`).join(',')).join('\n');
-      const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='boat-battery-loads.csv'; a.click(); URL.revokeObjectURL(url);
-    }
-
-    // Idempotent default loads (FRIDGE REMOVED)
-    function seedDefaults(){
-      const wanted=[
-        'Anchor Light (LED)',
-        'Running/Nav Lights (LED set)',
-        'Chartplotter/MFD',
-        'Depth/Wind (avg)',
-        'Cabin Fan',
-        'Stereo (avg listening)',
-        'Laptop (USB-PD 65 W)'
-      ];
-      const existing=new Set(state.rows.map(r=>r.name));
-      for(const n of wanted){ if(!existing.has(n)){ const it=LIB.find(x=>x.name===n); if(it) addRow({...it}); } }
-    }
-
-    (function(){
-      setGenType('Solar');
-      const raw = localStorage.getItem('boatSizerAutosaveV2');
-      if(raw){ try{ loadState(JSON.parse(raw)); recalc(); return; }catch(e){ console.warn('autosave v2 parse failed', e); } }
-      seedDefaults();
-      genName.value='Solar: 200 W × 2'; $('#field-panelW').value=200; $('#field-panels').value=2; $('#field-sun').value=4.5; $('#field-derate').value=15; $('#field-ctrl').value=96; genHours.value=4.5; onAddGen();
-      recalc();
-    })();
-
-    function loadState(data){
-      try{
-        voltage.value = data.settings.voltage || 12; chemistry.value = data.settings.chemistry || 'LFP';
-        dod.value = data.settings.dod ?? DEFAULTS.dodByChem[chemistry.value]; reserve.value = data.settings.reserve ?? 20;
-        days.value = data.settings.days ?? 2; invEff.value = data.settings.invEff ?? 90; invStandby.value = data.settings.invStandby ?? 6; derate.value = data.settings.derate ?? 0;
-        tbody.innerHTML=''; state.rows=[]; (data.rows||[]).forEach(r=> addRow(r));
-        state.gen=[]; genBody.innerHTML=''; (data.gen||[]).forEach(e=> state.gen.push(e)); renderGenList();
-        unitMode='Ah'; $('#unitWh').checked=false; $('#unitAh').checked=true;
-      }catch(e){ console.error(e); }
-    }
-
-    /* ===== Reports Tab Renderer (unit-aware) ===== */
-    let reportsBarChart=null, reportsLineChart=null;
-
-    function updateReportsFromModel(model){
-      if(!model || !Array.isArray(model.labels)) return;
-      const labels=model.labels.slice();
-      const genWh=(model.generationWh||[]).map(x=>+x||0);
-      const useWh=(model.consumptionWh||[]).map(x=>+x||0);
-      const v = +model.systemVoltage || 12;
-
-      const len=Math.max(labels.length, genWh.length, useWh.length);
-      while(labels.length<len) labels.push(String(labels.length+1));
-      while(genWh.length<len) genWh.push(0);
-      while(useWh.length<len) useWh.push(0);
-
-      const isAh = (unitMode === 'Ah');
-      const gen = isAh ? genWh.map(x=>x/v) : genWh.slice();
-      const use = isAh ? useWh.map(x=>x/v) : useWh.slice();
-      const net = gen.map((g,i)=> g - use[i]);
-
-      const cumulativeUse=[]; use.reduce((acc,v,i)=> (cumulativeUse[i]=acc+v, acc+v),0);
-
-      const hasChart = typeof window.Chart !== 'undefined';
-      const unitLabel = isAh ? 'Ah' : 'Wh';
-      const yTitle = isAh ? 'Amp-hours (Ah)' : 'Watt-hours (Wh)';
-
-      renderReportsBar({labels, gen, use, net, hasChart, unitLabel, yTitle});
-      renderReportsLine({labels, cumulativeUse, hasChart, unitLabel, yTitle});
-    }
-
-    function renderReportsBar({labels, gen, use, net, hasChart, unitLabel, yTitle}){
-      const canvas = document.getElementById('reportsBar');
-      const fallback = document.getElementById('reportsBarFallback');
-      if(!canvas) return;
-
-      if(hasChart){
-        fallback.style.display='none'; canvas.style.display='';
-        if(reportsBarChart){ try{reportsBarChart.destroy();}catch{} reportsBarChart=null; }
-        const negUse = use.map(v=> -v);
-        reportsBarChart = new Chart(canvas.getContext('2d'), {
-          type:'bar',
-          data:{ labels, datasets:[
-            { label:`Generation (${unitLabel})`, data:gen, borderWidth:1 },
-            { label:`Consumption (${unitLabel})`, data:negUse, borderWidth:1 },
-            { label:`Net (${unitLabel})`, data:net, borderWidth:1 }
-          ]},
-          options:{
-            responsive:true, maintainAspectRatio:false,
-            scales:{ x:{grid:{display:false}}, y:{beginAtZero:true, title:{display:true, text:yTitle}} },
-            plugins:{ legend:{position:'top'}, tooltip:{mode:'index', intersect:false} }
-          }
+      function clamp(x, a, b) {
+        return Math.min(b, Math.max(a, x));
+      }
+      function escapeHtml(s = "") {
+        return s.replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
+        );
+      }
+      function escapeAttr(s = "") {
+        return escapeHtml(s).replace(/'/g, "&#39;");
+      }
+      function fmt(x) {
+        if (!isFinite(x)) return "0";
+        if (Math.abs(x) < 10) return x.toFixed(2);
+        if (Math.abs(x) < 100) return x.toFixed(1);
+        return Math.round(x).toLocaleString();
+      }
+      function toast(msg) {
+        const t = document.createElement("div");
+        t.textContent = msg;
+        Object.assign(t.style, {
+          position: "fixed",
+          bottom: "16px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          padding: "8px 12px",
+          background: "#0c1626",
+          color: "var(--text)",
+          border: "1px solid var(--line)",
+          borderRadius: "10px",
         });
-      } else {
-        canvas.style.display='none'; fallback.style.display='';
-        fallback.innerHTML = buildBarFallbackTable(labels, gen, use, net, unitLabel);
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 1600);
       }
-    }
 
-    function renderReportsLine({labels, cumulativeUse, hasChart, unitLabel, yTitle}){
-      const canvas = document.getElementById('reportsLine');
-      const fallback = document.getElementById('reportsLineFallback');
-      if(!canvas) return;
+      function setKpiPair(whId, ahId, whVal, ahVal) {
+        const whEl = $("#" + whId).closest(".kpi");
+        const ahEl = $("#" + ahId).closest(".kpi");
+        if (unitMode === "Wh") {
+          $("#" + whId).textContent = `${fmt(whVal)} Wh/day`;
+          whEl.classList.remove("hidden");
+          ahEl.classList.add("hidden");
+        } else {
+          $("#" + ahId).textContent = `${fmt(ahVal)} Ah/day`;
+          ahEl.classList.remove("hidden");
+          whEl.classList.add("hidden");
+        }
+      }
 
-      if(hasChart){
-        fallback.style.display='none'; canvas.style.display='';
-        if(reportsLineChart){ try{reportsLineChart.destroy();}catch{} reportsLineChart=null; }
-        reportsLineChart = new Chart(canvas.getContext('2d'), {
-          type:'line',
-          data:{ labels, datasets:[{ label:`Cumulative Consumption (${unitLabel})`, data:cumulativeUse, borderWidth:2, pointRadius:0, tension:0.25 }]},
-          options:{
-            responsive:true, maintainAspectRatio:false,
-            scales:{ x:{grid:{display:false}}, y:{beginAtZero:true, title:{display:true, text:yTitle}} },
-            plugins:{ legend:{position:'top'}, tooltip:{mode:'index', intersect:false} }
+      function recalc() {
+        state.settings = {
+          voltage: +voltage.value,
+          chemistry: chemistry.value,
+          dod: clamp(num(dod.value), 10, 99),
+          reserve: clamp(num(reserve.value), 0, 100),
+          days: Math.max(1, Math.round(num(days.value) || 1)),
+          invEff: clamp(num(invEff.value), 50, 100),
+          invStandby: Math.max(0, num(invStandby.value) || 0),
+          derate: clamp(num(derate.value), 0, 80),
+        };
+        $("#vLabel").textContent = state.settings.voltage;
+        $("#vLabel2").textContent = state.settings.voltage;
+
+        let anchorWh = 0,
+          sailWh = 0,
+          acAnchorHours = 0,
+          acSailHours = 0;
+        for (const r of state.rows) {
+          const duty = (r.duty || 0) / 100,
+            qty = r.qty || 0;
+          const whA = rowWh(r, r.hAnchor, duty, qty),
+            whS = rowWh(r, r.hSail, duty, qty);
+          if (r.type === "AC") {
+            acAnchorHours = Math.max(acAnchorHours, r.hAnchor || 0);
+            acSailHours = Math.max(acSailHours, r.hSail || 0);
           }
-        });
-      } else {
-        canvas.style.display='none'; fallback.style.display='';
-        fallback.innerHTML = buildLineFallbackTable(labels, cumulativeUse, unitLabel);
-      }
-    }
+          anchorWh += whA;
+          sailWh += whS;
+        }
+        const standbyWhDay =
+          state.settings.invStandby * (acAnchorHours + acSailHours);
+        const whDayTotal = anchorWh + sailWh + standbyWhDay;
+        const ahDayTotal = whDayTotal / state.settings.voltage;
 
-    function buildBarFallbackTable(labels, gen, use, net, unitLabel){
-      const rows = labels.map((l,i)=>`
+        let genWhDay = 0;
+        for (const e of state.gen) {
+          genWhDay += genEntryWh(e, state.settings.voltage);
+        }
+        const genAhDay = genWhDay / state.settings.voltage;
+
+        const netWh = genWhDay - whDayTotal,
+          netAh = genAhDay - ahDayTotal;
+        const tripWh = whDayTotal * state.settings.days,
+          tripAh = ahDayTotal * state.settings.days;
+
+        const usableDoD = state.settings.dod / 100;
+        const withReserveAh = tripAh * (1 + state.settings.reserve / 100);
+        let nameplateAh = withReserveAh / usableDoD;
+        if (state.settings.derate > 0) {
+          nameplateAh = nameplateAh / (1 - state.settings.derate / 100);
+        }
+        const withReserveWh = withReserveAh * state.settings.voltage,
+          nameplateWh = nameplateAh * state.settings.voltage;
+        const modules100 = Math.max(1, Math.ceil(nameplateAh / 100));
+        const layout = `${modules100} × 100 Ah @ ${state.settings.voltage} V`;
+
+        const netWhEl = $("#netWhDay").closest(".kpi");
+        const netAhEl = $("#netAhDay").closest(".kpi");
+        [netWhEl, netAhEl].forEach((el) =>
+          el.classList.remove("ok", "warn", "bad")
+        );
+        const netMetric = unitMode === "Wh" ? netWh : netAh;
+        const threshold =
+          unitMode === "Wh" ? 200 : 200 / state.settings.voltage;
+        const targetEl = unitMode === "Wh" ? netWhEl : netAhEl;
+        if (netMetric > 0) targetEl.classList.add("ok");
+        else if (Math.abs(netMetric) < threshold)
+          targetEl.classList.add("warn");
+        else targetEl.classList.add("bad");
+
+        setKpiPair("whDay", "ahDay", whDayTotal, ahDayTotal);
+        setKpiPair("genWhDay", "genAhDay", genWhDay, genAhDay);
+        setKpiPair("netWhDay", "netAhDay", netWh, netAh);
+
+        $("#tripWhAh").textContent =
+          unitMode === "Wh" ? `${fmt(tripWh)} Wh` : `${fmt(tripAh)} Ah`;
+        $("#bankAh").textContent =
+          unitMode === "Wh"
+            ? `${fmt(withReserveWh)} Wh / ${fmt(nameplateWh)} Wh`
+            : `${fmt(withReserveAh)} Ah / ${fmt(nameplateAh)} Ah`;
+        $("#anchorWhAh").textContent =
+          unitMode === "Wh"
+            ? `${fmt(anchorWh)} Wh/day`
+            : `${fmt(anchorWh / state.settings.voltage)} Ah/day`;
+        $("#sailWhAh").textContent =
+          unitMode === "Wh"
+            ? `${fmt(sailWh)} Wh/day`
+            : `${fmt(sailWh / state.settings.voltage)} Ah/day`;
+        $("#invStandbyWh").textContent =
+          unitMode === "Wh"
+            ? `${fmt(standbyWhDay)} Wh/day`
+            : `${fmt(standbyWhDay / state.settings.voltage)} Ah/day`;
+        $("#suggestLayout").textContent = layout;
+
+        const autosave = {
+          settings: state.settings,
+          rows: state.rows,
+          gen: state.gen,
+        };
+        localStorage.setItem("boatSizerAutosaveV2", JSON.stringify(autosave));
+
+        renderGenList();
+
+        const d = state.settings.days;
+        const labels = Array.from({ length: d }, (_, i) => `Day ${i + 1}`);
+        const generationWh = Array.from({ length: d }, () => genWhDay);
+        const consumptionWh = Array.from({ length: d }, () => whDayTotal);
+        if (typeof window.renderReports === "function") {
+          window.renderReports({
+            labels,
+            generationWh,
+            consumptionWh,
+            systemVoltage: state.settings.voltage,
+          });
+        }
+      }
+
+      function rowWh(r, hours, duty, qty) {
+        const v = state.settings.voltage,
+          eff = state.settings.invEff / 100;
+        const h = Math.max(0, hours || 0) * Math.max(0, duty || 0) * (qty || 0);
+        if (h <= 0) return 0;
+        if (r.type === "AC") {
+          if (r.entry === "W") return ((r.value || 0) * h) / eff;
+          return ((r.value || 0) * 120 * h) / eff;
+        } else {
+          if (r.entry === "W") return (r.value || 0) * h;
+          return (r.value || 0) * v * h;
+        }
+      }
+
+      function exportCSV() {
+        const headers = [
+          "Name",
+          "Category",
+          "Type",
+          "Entry",
+          "Value",
+          "Hours_Anchor",
+          "Hours_Underway",
+          "Duty_%",
+          "Qty",
+        ];
+        const rows = state.rows.map((r) => [
+          r.name,
+          r.category,
+          r.type,
+          r.entry,
+          r.value,
+          r.hAnchor,
+          r.hSail,
+          r.duty,
+          r.qty,
+        ]);
+        const netText =
+          unitMode === "Wh"
+            ? $("#netWhDay").textContent
+            : $("#netAhDay").textContent;
+        const totals = [
+          [],
+          ["Summary", "", "", "", ""],
+          [
+            "Loads",
+            "",
+            "",
+            "",
+            unitMode === "Wh"
+              ? $("#whDay").textContent
+              : $("#ahDay").textContent,
+          ],
+          [
+            "Gen",
+            "",
+            "",
+            "",
+            unitMode === "Wh"
+              ? $("#genWhDay").textContent
+              : $("#genAhDay").textContent,
+          ],
+          ["Net", "", "", "", netText],
+          ["Trip (loads only)", "", "", "", $("#tripWhAh").textContent],
+          [
+            "Usable (bank)",
+            "",
+            "",
+            "",
+            $("#bankAh").textContent.split("/")[0].trim(),
+          ],
+          [
+            "Nameplate (bank)",
+            "",
+            "",
+            "",
+            $("#bankAh").textContent.split("/")[1].trim(),
+          ],
+        ];
+        const csv = [headers, ...rows, ...totals]
+          .map((r) =>
+            r
+              .map((v) => String(v ?? "").replace(/"/g, '""'))
+              .map((v) => `"${v}"`)
+              .join(",")
+          )
+          .join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "boat-battery-loads.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      // Idempotent default loads (FRIDGE REMOVED)
+      function seedDefaults() {
+        const wanted = [
+          "Anchor Light (LED)",
+          "Running/Nav Lights (LED set)",
+          "Chartplotter/MFD",
+          "Depth/Wind (avg)",
+          "Cabin Fan",
+          "Stereo (avg listening)",
+          "Laptop (USB-PD 65 W)",
+        ];
+        const existing = new Set(state.rows.map((r) => r.name));
+        for (const n of wanted) {
+          if (!existing.has(n)) {
+            const it = LIB.find((x) => x.name === n);
+            if (it) addRow({ ...it });
+          }
+        }
+      }
+
+      (function () {
+        setGenType("Solar");
+        const raw = localStorage.getItem("boatSizerAutosaveV2");
+        if (raw) {
+          try {
+            loadState(JSON.parse(raw));
+            recalc();
+            return;
+          } catch (e) {
+            console.warn("autosave v2 parse failed", e);
+          }
+        }
+        seedDefaults();
+        genName.value = "Solar: 200 W × 2";
+        $("#field-panelW").value = 200;
+        $("#field-panels").value = 2;
+        $("#field-sun").value = 4.5;
+        $("#field-derate").value = 15;
+        $("#field-ctrl").value = 96;
+        genHours.value = 4.5;
+        onAddGen();
+        recalc();
+      })();
+
+      function loadState(data) {
+        try {
+          voltage.value = data.settings.voltage || 12;
+          chemistry.value = data.settings.chemistry || "LFP";
+          dod.value = data.settings.dod ?? DEFAULTS.dodByChem[chemistry.value];
+          reserve.value = data.settings.reserve ?? 20;
+          days.value = data.settings.days ?? 2;
+          invEff.value = data.settings.invEff ?? 90;
+          invStandby.value = data.settings.invStandby ?? 6;
+          derate.value = data.settings.derate ?? 0;
+          tbody.innerHTML = "";
+          state.rows = [];
+          (data.rows || []).forEach((r) => addRow(r));
+          state.gen = [];
+          genBody.innerHTML = "";
+          (data.gen || []).forEach((e) => state.gen.push(e));
+          renderGenList();
+          unitMode = "Ah";
+          $("#unitWh").checked = false;
+          $("#unitAh").checked = true;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      /* ===== Reports Tab Renderer (unit-aware) ===== */
+      let reportsBarChart = null,
+        reportsLineChart = null;
+
+      function updateReportsFromModel(model) {
+        if (!model || !Array.isArray(model.labels)) return;
+        const labels = model.labels.slice();
+        const genWh = (model.generationWh || []).map((x) => +x || 0);
+        const useWh = (model.consumptionWh || []).map((x) => +x || 0);
+        const v = +model.systemVoltage || 12;
+
+        const len = Math.max(labels.length, genWh.length, useWh.length);
+        while (labels.length < len) labels.push(String(labels.length + 1));
+        while (genWh.length < len) genWh.push(0);
+        while (useWh.length < len) useWh.push(0);
+
+        const isAh = unitMode === "Ah";
+        const gen = isAh ? genWh.map((x) => x / v) : genWh.slice();
+        const use = isAh ? useWh.map((x) => x / v) : useWh.slice();
+        const net = gen.map((g, i) => g - use[i]);
+
+        const cumulativeUse = [];
+        use.reduce((acc, v, i) => ((cumulativeUse[i] = acc + v), acc + v), 0);
+
+        const hasChart = typeof window.Chart !== "undefined";
+        const unitLabel = isAh ? "Ah" : "Wh";
+        const yTitle = isAh ? "Amp-hours (Ah)" : "Watt-hours (Wh)";
+
+        renderReportsBar({
+          labels,
+          gen,
+          use,
+          net,
+          hasChart,
+          unitLabel,
+          yTitle,
+        });
+        renderReportsLine({
+          labels,
+          cumulativeUse,
+          hasChart,
+          unitLabel,
+          yTitle,
+        });
+      }
+
+      function renderReportsBar({
+        labels,
+        gen,
+        use,
+        net,
+        hasChart,
+        unitLabel,
+        yTitle,
+      }) {
+        const canvas = document.getElementById("reportsBar");
+        const fallback = document.getElementById("reportsBarFallback");
+        if (!canvas) return;
+
+        if (hasChart) {
+          fallback.style.display = "none";
+          canvas.style.display = "";
+          if (reportsBarChart) {
+            try {
+              reportsBarChart.destroy();
+            } catch {}
+            reportsBarChart = null;
+          }
+          const negUse = use.map((v) => -v);
+          reportsBarChart = new Chart(canvas.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: `Generation (${unitLabel})`,
+                  data: gen,
+                  borderWidth: 1,
+                },
+                {
+                  label: `Consumption (${unitLabel})`,
+                  data: negUse,
+                  borderWidth: 1,
+                },
+                { label: `Net (${unitLabel})`, data: net, borderWidth: 1 },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { grid: { display: false } },
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: yTitle },
+                },
+              },
+              plugins: {
+                legend: { position: "top" },
+                tooltip: { mode: "index", intersect: false },
+              },
+            },
+          });
+        } else {
+          canvas.style.display = "none";
+          fallback.style.display = "";
+          fallback.innerHTML = buildBarFallbackTable(
+            labels,
+            gen,
+            use,
+            net,
+            unitLabel
+          );
+        }
+      }
+
+      function renderReportsLine({
+        labels,
+        cumulativeUse,
+        hasChart,
+        unitLabel,
+        yTitle,
+      }) {
+        const canvas = document.getElementById("reportsLine");
+        const fallback = document.getElementById("reportsLineFallback");
+        if (!canvas) return;
+
+        if (hasChart) {
+          fallback.style.display = "none";
+          canvas.style.display = "";
+          if (reportsLineChart) {
+            try {
+              reportsLineChart.destroy();
+            } catch {}
+            reportsLineChart = null;
+          }
+          reportsLineChart = new Chart(canvas.getContext("2d"), {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: `Cumulative Consumption (${unitLabel})`,
+                  data: cumulativeUse,
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  tension: 0.25,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { grid: { display: false } },
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: yTitle },
+                },
+              },
+              plugins: {
+                legend: { position: "top" },
+                tooltip: { mode: "index", intersect: false },
+              },
+            },
+          });
+        } else {
+          canvas.style.display = "none";
+          fallback.style.display = "";
+          fallback.innerHTML = buildLineFallbackTable(
+            labels,
+            cumulativeUse,
+            unitLabel
+          );
+        }
+      }
+
+      function buildBarFallbackTable(labels, gen, use, net, unitLabel) {
+        const rows = labels
+          .map(
+            (l, i) => `
         <tr>
           <td>${escapeHtml(l)}</td>
           <td style="text-align:right">${fmt(gen[i])}</td>
           <td style="text-align:right">${fmt(use[i])}</td>
           <td style="text-align:right">${fmt(net[i])}</td>
-        </tr>`).join('');
-      return `
+        </tr>`
+          )
+          .join("");
+        return `
         <div class="muted" style="margin-bottom:8px">Chart library not found; showing data table instead.</div>
         <table style="width:100%;border-collapse:collapse">
           <thead>
@@ -960,15 +2483,19 @@
           </thead>
           <tbody>${rows}</tbody>
         </table>`;
-    }
+      }
 
-    function buildLineFallbackTable(labels, cumulative, unitLabel){
-      const rows = labels.map((l,i)=>`
+      function buildLineFallbackTable(labels, cumulative, unitLabel) {
+        const rows = labels
+          .map(
+            (l, i) => `
         <tr>
           <td>${escapeHtml(l)}</td>
           <td style="text-align:right">${fmt(cumulative[i])}</td>
-        </tr>`).join('');
-      return `
+        </tr>`
+          )
+          .join("");
+        return `
         <div class="muted" style="margin-bottom:8px">Chart library not found; showing data table instead.</div>
         <table style="width:100%;border-collapse:collapse">
           <thead>
@@ -979,13 +2506,23 @@
           </thead>
           <tbody>${rows}</tbody>
         </table>`;
-    }
+      }
 
-    window.renderReports = function({ labels, generationWh, consumptionWh, systemVoltage }) {
-      updateReportsFromModel({ labels, generationWh, consumptionWh, systemVoltage });
-    };
+      window.renderReports = function ({
+        labels,
+        generationWh,
+        consumptionWh,
+        systemVoltage,
+      }) {
+        updateReportsFromModel({
+          labels,
+          generationWh,
+          consumptionWh,
+          systemVoltage,
+        });
+      };
 
-    setTimeout(()=>recalc(),0);
-  </script>
-</body>
+      setTimeout(() => recalc(), 0);
+    </script>
+  </body>
 </html>
