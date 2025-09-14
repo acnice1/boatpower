@@ -138,10 +138,29 @@
         cursor: pointer;
         user-select: none;
       }
-      .tab.active {
-        color: var(--text);
-        background: #ffae42; // #132038 original
+
+      :root {
+        --tab-text-active: #ffae42; /* saffron orange */
+        --tab-text-hover: #e6952e; /* subtle darker hover */
       }
+
+      /* inactive stays muted until hover */
+      .tab:hover {
+        color: var(--tab-text-hover);
+      }
+
+      /* active tab text is orange, darkens on hover */
+      .tab.active {
+        color: var(--tab-text-active);
+      }
+      .tab.active:hover {
+        color: var(--tab-text-hover);
+      }
+
+      /*      .tab.active {
+//        color: var(--text);
+//        background: #132038;
+     }*/
       .tabpanes > .pane {
         display: none;
       }
