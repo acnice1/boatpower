@@ -1395,7 +1395,7 @@
         libA("Chartplotter/MFD", "Instruments", 1.0, 0, 5, 100, 1, "DC"),
         libA("Depth/Wind (avg)", "Instruments", 0.4, 0, 5, 100, 1, "DC"),
         libA("Cabin Fan", "Comfort", 0.18, 12, 0, 100, 1, "DC"),
-        libW("Laptop (USB-PD 65 W)", "Misc", 65, 4, 0, 100, 1, "DC"),
+        libW("Laptop (USB-PD 35 W)", "Misc", 35, 4, 0, 100, 1, "DC"),
         libW("Laptop (AC 65 W via inverter)", "Misc", 65, 4, 0, 100, 1, "AC"),
         libW("Fridge (60 W @ 35% duty)", "Misc", 60, 24, 0, 35, 1, "DC"),
         libW("Microwave 900 W (10 min)", "Galley", 900, 0.17, 0, 100, 1, "AC"),
@@ -2241,7 +2241,7 @@
           "Depth/Wind (avg)",
           "Cabin Fan",
           "Stereo (avg listening)",
-          "Laptop (USB-PD 65 W)",
+          "Laptop (USB-PD 35 W)",
         ];
         const existing = new Set(state.rows.map((r) => r.name));
         for (const n of wanted) {
