@@ -646,6 +646,7 @@ function setKpiPair(whId, ahId, whVal, ahVal) {
 }
 
 function recalc() {
+  // ---- Settings ----
   state.settings = {
     voltage: +voltage.value,
     chemistry: chemistry.value,
@@ -659,15 +660,17 @@ function recalc() {
   $("#vLabel").textContent = state.settings.voltage;
   $("#vLabel2").textContent = state.settings.voltage;
 
+  // ---- Loads math (per-day) ----
   let anchorWh = 0,
     sailWh = 0,
     acAnchorHours = 0,
     acSailHours = 0;
+
   for (const r of state.rows) {
-    const duty = (r.duty || 0) / 100,
-      qty = r.qty || 0;
-    const whA = rowWh(r, r.hAnchor, duty, qty),
-      whS = rowWh(r, r.hSail, duty, qty);
+    const duty = (r.duty || 0) / 100;
+    const qty = r.qty || 0;
+    const whA = rowWh(r, r.hAnchor, duty, qty);
+    const whS = rowWh(r, r.hSail, duty, qty);
     if (r.type === "AC") {
       acAnchorHours = Math.max(acAnchorHours, r.hAnchor || 0);
       acSailHours = Math.max(acSailHours, r.hSail || 0);
@@ -675,42 +678,52 @@ function recalc() {
     anchorWh += whA;
     sailWh += whS;
   }
-  const standbyWhDay = state.settings.invStandby * (acAnchorHours + acSailHours);
+
+  const standbyWhDay =
+    state.settings.invStandby * (acAnchorHours + acSailHours);
+
   const whDayTotal = anchorWh + sailWh + standbyWhDay;
   const ahDayTotal = whDayTotal / state.settings.voltage;
 
+  // ---- Generation math (per-day) ----
   let genWhDay = 0;
   for (const e of state.gen) {
     genWhDay += genEntryWh(e, state.settings.voltage);
   }
   const genAhDay = genWhDay / state.settings.voltage;
 
-  const netWh = genWhDay - whDayTotal,
-    netAh = genAhDay - ahDayTotal;
-  const tripWh = whDayTotal * state.settings.days,
-    tripAh = ahDayTotal * state.settings.days;
+  // ---- Net & Trip ----
+  const netWh = genWhDay - whDayTotal;
+  const netAh = genAhDay - ahDayTotal;
 
+  const tripWh = whDayTotal * state.settings.days;
+  const tripAh = ahDayTotal * state.settings.days;
+
+  // ---- Sizing ----
   const usableDoD = state.settings.dod / 100;
   const withReserveAh = tripAh * (1 + state.settings.reserve / 100);
   let nameplateAh = withReserveAh / usableDoD;
   if (state.settings.derate > 0) {
     nameplateAh = nameplateAh / (1 - state.settings.derate / 100);
   }
-  const withReserveWh = withReserveAh * state.settings.voltage,
-    nameplateWh = nameplateAh * state.settings.voltage;
+  const withReserveWh = withReserveAh * state.settings.voltage;
+  const nameplateWh = nameplateAh * state.settings.voltage;
   const modules100 = Math.max(1, Math.ceil(nameplateAh / 100));
   const layout = `${modules100} × 100 Ah @ ${state.settings.voltage} V`;
 
+  // ---- NET KPI coloring ----
   const netWhEl = $("#netWhDay").closest(".kpi");
   const netAhEl = $("#netAhDay").closest(".kpi");
   [netWhEl, netAhEl].forEach((el) => el.classList.remove("ok", "warn", "bad"));
   const netMetric = unitMode === "Wh" ? netWh : netAh;
-  const threshold = unitMode === "Wh" ? 200 : 200 / state.settings.voltage;
+  const threshold =
+    unitMode === "Wh" ? 200 : 200 / state.settings.voltage;
   const targetEl = unitMode === "Wh" ? netWhEl : netAhEl;
   if (netMetric > 0) targetEl.classList.add("ok");
   else if (Math.abs(netMetric) < threshold) targetEl.classList.add("warn");
   else targetEl.classList.add("bad");
 
+  // ---- KPI text ----
   setKpiPair("whDay", "ahDay", whDayTotal, ahDayTotal);
   setKpiPair("genWhDay", "genAhDay", genWhDay, genAhDay);
   setKpiPair("netWhDay", "netAhDay", netWh, netAh);
@@ -735,24 +748,68 @@ function recalc() {
       : `${fmt(standbyWhDay / state.settings.voltage)} Ah/day`;
   $("#suggestLayout").textContent = layout;
 
-  const autosave = { settings: state.settings, rows: state.rows, gen: state.gen };
+  // ---- Autosave ----
+  const autosave = {
+    settings: state.settings,
+    rows: state.rows,
+    gen: state.gen,
+  };
   localStorage.setItem("boatSizerAutosaveV2", JSON.stringify(autosave));
 
+  // ---- Refresh Gen list table ----
   renderGenList();
 
+  // ---- Reports: labels + totals ----
   const d = state.settings.days;
   const labels = Array.from({ length: d }, (_, i) => `Day ${i + 1}`);
   const generationWh = Array.from({ length: d }, () => genWhDay);
   const consumptionWh = Array.from({ length: d }, () => whDayTotal);
+
+  // ---- NEW: Build per-day breakdowns for stacked chart ----
+  // Generation breakdown: each source contributes the same per-day Wh across all days
+  const genBreakdown = state.gen.map((e) => {
+    const wh = genEntryWh(e, state.settings.voltage);
+    return {
+      label: e.name?.trim() || e.type || "Source",
+      series: Array.from({ length: d }, () => wh),
+    };
+  });
+
+  // Use breakdown: each load row (anchor + sail for the day), plus inverter standby as its own contributor
+  const rowWhPerDay = state.rows.map((r) => {
+    const duty = (r.duty || 0) / 100;
+    const qty = r.qty || 0;
+    const whA = rowWh(r, r.hAnchor, duty, qty);
+    const whS = rowWh(r, r.hSail, duty, qty);
+    return { label: r.name || "Load", wh: whA + whS };
+  });
+
+  const useBreakdown = rowWhPerDay.map((x) => ({
+    label: x.label,
+    series: Array.from({ length: d }, () => x.wh),
+  }));
+
+  if (standbyWhDay > 0) {
+    useBreakdown.push({
+      label: "Inverter standby",
+      series: Array.from({ length: d }, () => standbyWhDay),
+    });
+  }
+
+  // ---- Render reports (classic + stacked if breakdowns provided) ----
   if (typeof window.renderReports === "function") {
     window.renderReports({
       labels,
       generationWh,
       consumptionWh,
       systemVoltage: state.settings.voltage,
+      genBreakdown,   // optional: stacked contributors for generation
+      useBreakdown,   // optional: stacked contributors for consumption
+      majorThreshold: 0.10, // show contributors >=10%, rest grouped as "Other"
     });
   }
 }
+
 
 function rowWh(r, hours, duty, qty) {
   const v = state.settings.voltage,

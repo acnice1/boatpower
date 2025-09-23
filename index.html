@@ -1,911 +1,919 @@
-<!DOCTYPE html> 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Boat Battery Sizer & Load Calculator</title>
-    <link rel="stylesheet" href="style.css" />
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-    ></script>
-    <!-- NEW: reports module -->
-    <script defer src="reports.js"></script>
-    <!-- main logic-->
-    <script defer src="script.js"></script>
-  
-  </head>
-  <body>
-    <header>
-      <h1>Boat Battery Sizer & Load Calculator</h1>
-      <div class="sub">
-        Model daily DC/AC loads, generation/charging, and battery size. Save
-        scenarios, export CSV, or print a report.
-      </div>
-    </header>
-
-    <main class="grid">
-      <!-- SETTINGS -->
-      <section class="card" aria-label="Settings">
-        <h2>System & Sizing Settings</h2>
-        <div class="content">
-          <div class="row">
-            <div class="pair">
-              <label for="voltage">System voltage</label>
-              <select id="voltage" class="select">
-                <option value="12">12 V</option>
-                <option value="24">24 V</option>
-                <option value="48">48 V</option>
-              </select>
-            </div>
-            <span class="note"
-              >Choose your DC system nominal voltage (12/24/48 V).</span
-            >
-          </div>
-
-          <div class="row">
-            <div class="pair">
-              <label for="chemistry">Battery chemistry</label>
-              <select id="chemistry" class="select">
-                <option value="LFP">LiFePO₄</option>
-                <option value="AGM">AGM / Flooded Lead-acid</option>
-                <option value="GEL">Gel</option>
-              </select>
-            </div>
-            <span class="note"
-              >Sets a sensible default usable depth-of-discharge (DoD).</span
-            >
-          </div>
-
-          <div class="row">
-            <div class="pair">
-              <label for="dod">Usable DoD (%)</label>
-              <input
-                id="dod"
-                type="number"
-                min="10"
-                max="99"
-                step="1"
-                class="number"
-              />
-            </div>
-            <span class="note">Typical: LFP 85–90%, AGM 50%, Gel 50–60%.</span>
-          </div>
-
-          <div class="row">
-            <div class="pair">
-              <label for="reserve">Reserve margin (%)</label>
-              <input
-                id="reserve"
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                class="number"
-                value="20"
-              />
-            </div>
-            <span class="note">Safety headroom on top of trip energy.</span>
-          </div>
-
-          <div class="row">
-            <div class="pair">
-              <label for="days">Trip length (days)</label>
-              <input
-                id="days"
-                type="number"
-                min="1"
-                step="1"
-                class="number"
-                value="2"
-              />
-            </div>
-            <span class="note"
-              >Per-day hours entered below × this many days.</span
-            >
-          </div>
-
-          <div class="row">
-            <div class="pair">
-              <label for="derate">Capacity derate for temp/age (%)</label>
-              <input
-                id="derate"
-                type="number"
-                min="0"
-                max="50"
-                step="1"
-                class="number"
-                value="0"
-              />
-            </div>
-            <span class="note"
-              >Optional: reduce effective capacity to model cold/aging.</span
-            >
-          </div>
-
-          <div class="row">
-            <div class="pair">
-              <label for="invEff">Inverter efficiency (%)</label>
-              <input
-                id="invEff"
-                type="number"
-                min="50"
-                max="100"
-                step="1"
-                class="number"
-                value="90"
-              />
-            </div>
-            <span class="note">Only used for AC loads.</span>
-          </div>
-
-          <div class="row">
-            <div class="pair">
-              <label for="invStandby">Inverter standby (W)</label>
-              <input
-                id="invStandby"
-                type="number"
-                min="0"
-                step="1"
-                class="number"
-                value="6"
-              />
-            </div>
-            <span class="note"
-              >“On but idle” draw; uses max AC hours per mode.</span
-            >
-          </div>
-
-          <div class="foot">
-            Tip: Switch anchor light to LED in the library to see instant
-            savings.
-          </div>
+  <!DOCTYPE html> 
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Boat Battery Sizer & Load Calculator</title>
+      <link rel="stylesheet" href="style.css" />
+      <script
+        defer
+        src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+      ></script>
+      <!-- NEW: reports module -->
+      <script defer src="reports.js"></script>
+      <!-- main logic-->
+      <script defer src="script.js"></script>
+    
+    </head>
+    <body>
+      <header>
+        <h1>Boat Battery Sizer & Load Calculator</h1>
+        <div class="sub">
+          Model daily DC/AC loads, generation/charging, and battery size. Save
+          scenarios, export CSV, or print a report.
         </div>
-      </section>
+      </header>
 
-      <!-- LOADS & GENERATION (TABS) -->
-      <section class="card" aria-label="Loads and Generation">
-        <h2>Energy Model</h2>
-        <div class="content">
-          <div class="tabs no-print" role="tablist" aria-label="Energy tabs">
-            <div
-              id="tab-loads"
-              class="tab active"
-              role="tab"
-              aria-controls="pane-loads"
-              aria-selected="true"
-            >
-              Loads
+      <main class="grid">
+        <!-- SETTINGS -->
+        <section class="card" aria-label="Settings">
+          <h2>System & Sizing Settings</h2>
+          <div class="content">
+            <div class="row">
+              <div class="pair">
+                <label for="voltage">System voltage</label>
+                <select id="voltage" class="select">
+                  <option value="12">12 V</option>
+                  <option value="24">24 V</option>
+                  <option value="48">48 V</option>
+                </select>
+              </div>
+              <span class="note"
+                >Choose your DC system nominal voltage (12/24/48 V).</span
+              >
             </div>
-            <div
-              id="tab-gen"
-              class="tab"
-              role="tab"
-              aria-controls="pane-gen"
-              aria-selected="false"
-            >
-              Generation & Charging
+
+            <div class="row">
+              <div class="pair">
+                <label for="chemistry">Battery chemistry</label>
+                <select id="chemistry" class="select">
+                  <option value="LFP">LiFePO₄</option>
+                  <option value="AGM">AGM / Flooded Lead-acid</option>
+                  <option value="GEL">Gel</option>
+                </select>
+              </div>
+              <span class="note"
+                >Sets a sensible default usable depth-of-discharge (DoD).</span
+              >
             </div>
-            <div
-              id="tab-reports"
-              class="tab"
-              role="tab"
-              aria-controls="pane-reports"
-              aria-selected="false"
-            >
-              Reports
+
+            <div class="row">
+              <div class="pair">
+                <label for="dod">Usable DoD (%)</label>
+                <input
+                  id="dod"
+                  type="number"
+                  min="10"
+                  max="99"
+                  step="1"
+                  class="number"
+                />
+              </div>
+              <span class="note">Typical: LFP 85–90%, AGM 50%, Gel 50–60%.</span>
             </div>
-            <!-- NEW TAB: Electric Range (stub) -->
-            <div
-              id="tab-range"
-              class="tab"
-              role="tab"
-              aria-controls="pane-range"
-              aria-selected="false"
-            >
-              Electric Range
+
+            <div class="row">
+              <div class="pair">
+                <label for="reserve">Reserve margin (%)</label>
+                <input
+                  id="reserve"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  class="number"
+                  value="20"
+                />
+              </div>
+              <span class="note">Safety headroom on top of trip energy.</span>
             </div>
-            <!-- NEW: User Manual tab -->
-            <div
-              id="tab-manual"
-              class="tab"
-              role="tab"
-              aria-controls="pane-manual"
-              aria-selected="false"
-            >
-              User Manual
+
+            <div class="row">
+              <div class="pair">
+                <label for="days">Trip length (days)</label>
+                <input
+                  id="days"
+                  type="number"
+                  min="1"
+                  step="1"
+                  class="number"
+                  value="2"
+                />
+              </div>
+              <span class="note"
+                >Per-day hours entered below × this many days.</span
+              >
+            </div>
+
+            <div class="row">
+              <div class="pair">
+                <label for="derate">Capacity derate for temp/age (%)</label>
+                <input
+                  id="derate"
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="1"
+                  class="number"
+                  value="0"
+                />
+              </div>
+              <span class="note"
+                >Optional: reduce effective capacity to model cold/aging.</span
+              >
+            </div>
+
+            <div class="row">
+              <div class="pair">
+                <label for="invEff">Inverter efficiency (%)</label>
+                <input
+                  id="invEff"
+                  type="number"
+                  min="50"
+                  max="100"
+                  step="1"
+                  class="number"
+                  value="90"
+                />
+              </div>
+              <span class="note">Only used for AC loads.</span>
+            </div>
+
+            <div class="row">
+              <div class="pair">
+                <label for="invStandby">Inverter standby (W)</label>
+                <input
+                  id="invStandby"
+                  type="number"
+                  min="0"
+                  step="1"
+                  class="number"
+                  value="6"
+                />
+              </div>
+              <span class="note"
+                >“On but idle” draw; uses max AC hours per mode.</span
+              >
+            </div>
+
+            <div class="foot">
+              Tip: Switch anchor light to LED in the library to see instant
+              savings.
             </div>
           </div>
+        </section>
 
-          <div class="tabpanes">
-            <!-- LOADS -->
-            <div
-              id="pane-loads"
-              class="pane active"
-              role="tabpanel"
-              aria-labelledby="tab-loads"
-            >
-              <div class="toolbar no-print">
-                <button class="primary" id="addRow">Add Load</button>
-                <select id="libSelect"></select>
-                <button id="addFromLib">Add from Library</button>
-                <button id="saveScenario">Save</button>
-                <button id="loadScenario">Load</button>
-                <button id="exportCsv">Export CSV</button>
-                <button onclick="window.print()">Print Report</button>
-                <button id="resetAll">Reset</button>
+        <!-- LOADS & GENERATION (TABS) -->
+        <section class="card" aria-label="Loads and Generation">
+          <h2>Energy Model</h2>
+          <div class="content">
+            <div class="tabs no-print" role="tablist" aria-label="Energy tabs">
+              <div
+                id="tab-loads"
+                class="tab active"
+                role="tab"
+                aria-controls="pane-loads"
+                aria-selected="true"
+              >
+                Loads
               </div>
-
-              <div class="note hide-print">
-                Columns: Name • Category • DC/AC • Entry (Watts/Amps) • Value •
-                Hours (Anchor/Underway) • Duty % • Qty • Delete
+              <div
+                id="tab-gen"
+                class="tab"
+                role="tab"
+                aria-controls="pane-gen"
+                aria-selected="false"
+              >
+                Generation & Charging
               </div>
-
-              <div style="overflow: auto">
-                <table id="loadTable" aria-describedby="table of loads">
-                  <thead>
-                    <tr>
-                      <th style="min-width: 220px">Name</th>
-                      <th>Category</th>
-                      <th>Type</th>
-                      <th>Entry</th>
-                      <th class="center">W/A</th>
-                      <th class="center">Hours @ Anchor</th>
-                      <th class="center">Hours Underway</th>
-                      <th class="center">Duty %</th>
-                      <th class="center">Qty</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody id="tbody"></tbody>
-                </table>
+              <div
+                id="tab-reports"
+                class="tab"
+                role="tab"
+                aria-controls="pane-reports"
+                aria-selected="false"
+              >
+                Reports
+              </div>
+              <!-- NEW TAB: Electric Range (stub) -->
+              <div
+                id="tab-range"
+                class="tab"
+                role="tab"
+                aria-controls="pane-range"
+                aria-selected="false"
+              >
+                Electric Range
+              </div>
+              <!-- NEW: User Manual tab -->
+              <div
+                id="tab-manual"
+                class="tab"
+                role="tab"
+                aria-controls="pane-manual"
+                aria-selected="false"
+              >
+                User Manual
               </div>
             </div>
 
-            <!-- GENERATION -->
-            <div
-              id="pane-gen"
-              class="pane"
-              role="tabpanel"
-              aria-labelledby="tab-gen"
-            >
-              <div class="gen-form">
-                <div class="full">
-                  <div class="pair">
-                    <label for="gen-type">Source type</label>
-                    <select
-                      id="gen-type"
-                      class="select"
-                      aria-label="Source type"
-                    >
-                      <option>Solar</option>
-                      <option>Wind</option>
-                      <option>Alternator</option>
-                      <option>AC Charger</option>
-                    </select>
-                  </div>
+            <div class="tabpanes">
+              <!-- LOADS -->
+              <div
+                id="pane-loads"
+                class="pane active"
+                role="tabpanel"
+                aria-labelledby="tab-loads"
+              >
+                <div class="toolbar no-print">
+                  <button class="primary" id="addRow">Add Load</button>
+                  <select id="libSelect"></select>
+                  <button id="addFromLib">Add from Library</button>
+                  <button id="saveScenario">Save</button>
+                  <button id="loadScenario">Load</button>
+                  <button id="exportCsv">Export CSV</button>
+                  <button onclick="window.print()">Print Report</button>
+                  <button id="resetAll">Reset</button>
                 </div>
 
-                <div class="full">
-                  <div class="pair">
-                    <label for="gen-name">Name</label>
-                    <input
-                      id="gen-name"
-                      placeholder="e.g., Arch Solar Array, Wind 400W, Victron 30A, Engine Alt 40A"
-                    />
-                  </div>
-                </div>
-
-                <div id="gen-fields" class="full"></div>
-
-                <div>
-                  <div class="pair">
-                    <label for="gen-hours">Hours/day</label>
-                    <input
-                      id="gen-hours"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value="4"
-                    />
-                  </div>
-                  <span class="note"
-                    >For Solar use sun hours; Wind often 24 h; Chargers/Alt =
-                    runtime.</span
-                  >
-                </div>
-
-                <div>
-                  <div class="pair">
-                    <label for="gen-qty">Quantity</label>
-                    <input
-                      id="gen-qty"
-                      type="number"
-                      min="1"
-                      step="1"
-                      value="1"
-                    />
-                  </div>
-                  <span class="note">Number of identical sources.</span>
-                </div>
-
-                <div
-                  class="full"
-                  style="display: flex; gap: 8px; align-items: center"
-                >
-                  <button class="primary" id="gen-add">Add Source</button>
-                  <button id="gen-update" style="display: none">Update</button>
-                  <button id="gen-cancel" style="display: none">Cancel</button>
-                  <span id="gen-editing" class="muted"></span>
-                </div>
-              </div>
-
-              <div class="gen-list">
                 <div class="note hide-print">
-                  Click a row to edit. “Wh/day” and “Ah/day” are computed at
-                  your system voltage.
+                  Columns: Name • Category • DC/AC • Entry (Watts/Amps) • Value •
+                  Hours (Anchor/Underway) • Duty % • Qty • Delete
                 </div>
+
                 <div style="overflow: auto">
-                  <table id="genTable">
+                  <table id="loadTable" aria-describedby="table of loads">
                     <thead>
                       <tr>
-                        <th>Name</th>
+                        <th style="min-width: 220px">Name</th>
+                        <th>Category</th>
                         <th>Type</th>
-                        <th>Details</th>
+                        <th>Entry</th>
+                        <th class="center">W/A</th>
+                        <th class="center">Hours @ Anchor</th>
+                        <th class="center">Hours Underway</th>
+                        <th class="center">Duty %</th>
                         <th class="center">Qty</th>
-                        <th class="center">Wh/day</th>
-                        <th class="center">Ah/day</th>
-                        <th class="center">Actions</th>
+                        <th></th>
                       </tr>
                     </thead>
-                    <tbody id="genBody"></tbody>
+                    <tbody id="tbody"></tbody>
                   </table>
                 </div>
               </div>
 
-              <div class="foot">
-                Solar uses (Panel W × Panels × Sun Hrs × (1−Derate%) ×
-                Controller Eff%). Wind uses (Rated W × Capacity % × Hours).
-                Alternator uses (DC A × V × Hours). AC Charger uses (DC A × V ×
-                Hours × Eff%).
-              </div>
-            </div>
-
-            <!-- REPORTS -->
-            <div
-              id="pane-reports"
-              class="pane"
-              role="tabpanel"
-              aria-labelledby="tab-reports"
-            >
-              <div class="note hide-print" style="margin-bottom: 10px">
-                Positive bars = Generation, negative bars = Consumption; Net can
-                be above/below zero. Line shows cumulative consumption over
-                trip.
-              </div>
-
-              <div class="card" style="margin-bottom: 16px; padding: 12px">
-                <h3 style="margin: 0 0 8px">
-                  Generation vs Consumption vs Net
-                </h3>
-                <div style="height: 240px">
-                  <canvas id="reportsBar" height="200"></canvas>
-                </div>
-                <div id="reportsBarFallback" style="display: none"></div>
-              </div>
-
-              <div class="card" style="padding: 12px">
-                <h3 style="margin: 0 0 8px">
-                  Cumulative Consumption Over Trip
-                </h3>
-                <div style="height: 240px">
-                  <canvas id="reportsLine" height="200"></canvas>
-                </div>
-                <div id="reportsLineFallback" style="display: none"></div>
-              </div>
-            </div>
-
-            <!-- NEW PANE: Electric Range (stub) -->
-            <div
-              id="pane-range"
-              class="pane"
-              role="tabpanel"
-              aria-labelledby="tab-range"
-            >
-              <!-- begin boat range -->
+              <!-- GENERATION -->
               <div
-                style="
-                  font-family: sans-serif;
-                  background: #121a2b;
-                  color: #e6edf3;
-                  padding: 20px;
-                  border-radius: 12px;
-                  max-width: 480px;
-                  margin: auto;
-                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
-                "
+                id="pane-gen"
+                class="pane"
+                role="tabpanel"
+                aria-labelledby="tab-gen"
               >
-                <h2 style="color: #60a5fa; text-align: center">
-                  ⚡ Boat Range Calculator
-                </h2>
+                <div class="gen-form">
+                  <div class="full">
+                    <div class="pair">
+                      <label for="gen-type">Source type</label>
+                      <select
+                        id="gen-type"
+                        class="select"
+                        aria-label="Source type"
+                      >
+                        <option>Solar</option>
+                        <option>Wind</option>
+                        <option>Alternator</option>
+                        <option>AC Charger</option>
+                      </select>
+                    </div>
+                  </div>
 
-                <label>🔋 Battery Capacity (Ah):</label>
-                <input
-                  type="number"
-                  id="batteryAh"
-                  value="150"
-                  style="width: 100%; padding: 6px; margin-bottom: 12px"
-                />
+                  <div class="full">
+                    <div class="pair">
+                      <label for="gen-name">Name</label>
+                      <input
+                        id="gen-name"
+                        placeholder="e.g., Arch Solar Array, Wind 400W, Victron 30A, Engine Alt 40A"
+                      />
+                    </div>
+                  </div>
 
-                <label>⚙️ Motor Draw (A): <span id="motorVal">25</span></label>
-                <input
-                  type="range"
-                  id="motorDraw"
-                  min="10"
-                  max="60"
-                  value="25"
-                  step="1"
-                  style="width: 100%; margin-bottom: 12px"
-                  oninput="document.getElementById('motorVal').innerText = this.value"
-                />
+                  <div id="gen-fields" class="full"></div>
 
-                <label>🚤 Speed:</label>
-                <div style="display: flex; gap: 8px; margin-bottom: 12px">
+                  <div>
+                    <div class="pair">
+                      <label for="gen-hours">Hours/day</label>
+                      <input
+                        id="gen-hours"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value="4"
+                      />
+                    </div>
+                    <span class="note"
+                      >For Solar use sun hours; Wind often 24 h; Chargers/Alt =
+                      runtime.</span
+                    >
+                  </div>
+
+                  <div>
+                    <div class="pair">
+                      <label for="gen-qty">Quantity</label>
+                      <input
+                        id="gen-qty"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value="1"
+                      />
+                    </div>
+                    <span class="note">Number of identical sources.</span>
+                  </div>
+
+                  <div
+                    class="full"
+                    style="display: flex; gap: 8px; align-items: center"
+                  >
+                    <button class="primary" id="gen-add">Add Source</button>
+                    <button id="gen-update" style="display: none">Update</button>
+                    <button id="gen-cancel" style="display: none">Cancel</button>
+                    <span id="gen-editing" class="muted"></span>
+                  </div>
+                </div>
+
+                <div class="gen-list">
+                  <div class="note hide-print">
+                    Click a row to edit. “Wh/day” and “Ah/day” are computed at
+                    your system voltage.
+                  </div>
+                  <div style="overflow: auto">
+                    <table id="genTable">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Type</th>
+                          <th>Details</th>
+                          <th class="center">Qty</th>
+                          <th class="center">Wh/day</th>
+                          <th class="center">Ah/day</th>
+                          <th class="center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="genBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="foot">
+                  Solar uses (Panel W × Panels × Sun Hrs × (1−Derate%) ×
+                  Controller Eff%). Wind uses (Rated W × Capacity % × Hours).
+                  Alternator uses (DC A × V × Hours). AC Charger uses (DC A × V ×
+                  Hours × Eff%).
+                </div>
+              </div>
+
+              <!-- REPORTS -->
+              <div
+                id="pane-reports"
+                class="pane"
+                role="tabpanel"
+                aria-labelledby="tab-reports"
+              >
+                <div class="note hide-print" style="margin-bottom: 10px">
+                  Positive bars = Generation, negative bars = Consumption; Net can
+                  be above/below zero. Line shows cumulative consumption over
+                  trip.
+                </div>
+
+                <div class="card" style="margin-bottom: 16px; padding: 12px">
+                  <h3 style="margin: 0 0 8px">
+                    Generation vs Consumption vs Net
+                  </h3>
+                  <div style="height: 240px">
+                    <canvas id="reportsBar" height="200"></canvas>
+                  </div>
+                  <div id="reportsBarFallback" style="display: none"></div>
+                </div>
+
+ <div class="card" style="padding: 12px">
+    <h3 style="margin: 0 0 8px">Cumulative Consumption Over Trip</h3>
+    <div style="height: 240px">
+      <canvas id="reportsLine" height="200"></canvas>
+    </div>
+    <div id="reportsLineFallback" style="display: none"></div>
+  </div>
+
+  <!-- NEW: stacked contributors INSIDE the reports pane -->
+  <div class="card" style="margin-top:16px; padding:12px">
+    <h3 style="margin: 0 0 8px">Stacked Contributors (≥10% by default)</h3>
+    <div style="height: 260px">
+      <canvas id="reportsStacked" height="220"></canvas>
+    </div>
+    <div id="reportsStackedFallback" style="display: none"></div>
+  </div>
+</div>
+
+
+              <!-- NEW PANE: Electric Range (stub) -->
+              <div
+                id="pane-range"
+                class="pane"
+                role="tabpanel"
+                aria-labelledby="tab-range"
+              >
+                <!-- begin boat range -->
+                <div
+                  style="
+                    font-family: sans-serif;
+                    background: #121a2b;
+                    color: #e6edf3;
+                    padding: 20px;
+                    border-radius: 12px;
+                    max-width: 480px;
+                    margin: auto;
+                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+                  "
+                >
+                  <h2 style="color: #60a5fa; text-align: center">
+                    ⚡ Boat Range Calculator
+                  </h2>
+
+                  <label>🔋 Battery Capacity (Ah):</label>
                   <input
                     type="number"
-                    id="speed"
-                    value="3"
-                    style="flex: 1; padding: 6px"
+                    id="batteryAh"
+                    value="150"
+                    style="width: 100%; padding: 6px; margin-bottom: 12px"
                   />
-                  <select id="speedUnit" style="flex: 1; padding: 6px">
-                    <option value="knots">knots</option>
-                    <option value="kmh">km/h</option>
-                    <option value="mph">mph</option>
+
+                  <label>⚙️ Motor Draw (A): <span id="motorVal">25</span></label>
+                  <input
+                    type="range"
+                    id="motorDraw"
+                    min="10"
+                    max="60"
+                    value="25"
+                    step="1"
+                    style="width: 100%; margin-bottom: 12px"
+                    oninput="document.getElementById('motorVal').innerText = this.value"
+                  />
+
+                  <label>🚤 Speed:</label>
+                  <div style="display: flex; gap: 8px; margin-bottom: 12px">
+                    <input
+                      type="number"
+                      id="speed"
+                      value="3"
+                      style="flex: 1; padding: 6px"
+                    />
+                    <select id="speedUnit" style="flex: 1; padding: 6px">
+                      <option value="knots">knots</option>
+                      <option value="kmh">km/h</option>
+                      <option value="mph">mph</option>
+                    </select>
+                  </div>
+
+                  <label>🔌 Charger Output (A):</label>
+                  <select
+                    id="chargerA"
+                    style="width: 100%; padding: 6px; margin-bottom: 12px"
+                  >
+                    <option value="0">None</option>
+                    <option value="5">5 A</option>
+                    <option value="8">8 A</option>
+                    <option value="10">10 A</option>
+                    <option value="12">12 A</option>
+                    <option value="15">15 A</option>
+                    <option value="18" selected>18 A</option>
+                    <option value="20">20 A</option>
+                    <option value="25">25 A</option>
+                    <option value="30">30 A</option>
                   </select>
+
+                  <label
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 8px;
+                      margin-bottom: 12px;
+                    "
+                  >
+                    <input type="checkbox" id="useCharger" checked />
+                    Include Charger in Calculation
+                  </label>
+
+                  <label>⛽ Generator Runtime (hours):</label>
+                  <input
+                    type="number"
+                    id="genHours"
+                    value="5.5"
+                    style="width: 100%; padding: 6px; margin-bottom: 16px"
+                  />
+
+                  <button
+                    onclick="calculateRange()"
+                    style="
+                      width: 100%;
+                      padding: 10px;
+                      background: #60a5fa;
+                      color: #fff;
+                      border: none;
+                      border-radius: 6px;
+                      font-weight: bold;
+                    "
+                  >
+                    Calculate
+                  </button>
+
+                  <div
+                    id="results"
+                    style="
+                      margin-top: 16px;
+                      padding: 12px;
+                      background: #1f2a44;
+                      border-radius: 8px;
+                    "
+                  ></div>
                 </div>
-
-                <label>🔌 Charger Output (A):</label>
-                <select
-                  id="chargerA"
-                  style="width: 100%; padding: 6px; margin-bottom: 12px"
-                >
-                  <option value="0">None</option>
-                  <option value="5">5 A</option>
-                  <option value="8">8 A</option>
-                  <option value="10">10 A</option>
-                  <option value="12">12 A</option>
-                  <option value="15">15 A</option>
-                  <option value="18" selected>18 A</option>
-                  <option value="20">20 A</option>
-                  <option value="25">25 A</option>
-                  <option value="30">30 A</option>
-                </select>
-
-                <label
-                  style="
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin-bottom: 12px;
-                  "
-                >
-                  <input type="checkbox" id="useCharger" checked />
-                  Include Charger in Calculation
-                </label>
-
-                <label>⛽ Generator Runtime (hours):</label>
-                <input
-                  type="number"
-                  id="genHours"
-                  value="5.5"
-                  style="width: 100%; padding: 6px; margin-bottom: 16px"
-                />
-
-                <button
-                  onclick="calculateRange()"
-                  style="
-                    width: 100%;
-                    padding: 10px;
-                    background: #60a5fa;
-                    color: #fff;
-                    border: none;
-                    border-radius: 6px;
-                    font-weight: bold;
-                  "
-                >
-                  Calculate
-                </button>
-
-                <div
-                  id="results"
-                  style="
-                    margin-top: 16px;
-                    padding: 12px;
-                    background: #1f2a44;
-                    border-radius: 8px;
-                  "
-                ></div>
+                <!-- end boat range-->
               </div>
-              <!-- end boat range-->
+
+              <!-- NEW: USER MANUAL -->
+              <div
+                id="pane-manual"
+                class="pane"
+                role="tabpanel"
+                aria-labelledby="tab-manual"
+              >
+                <div class="card" style="padding: 12px">
+                  <h3 style="margin: 0 0 10px">User Manual</h3>
+                  <p class="muted" style="margin-top: 0">
+                    This tab explains each field, the core math, and how to
+                    interpret results.
+                  </p>
+
+                  <h4>1) System &amp; Sizing Settings</h4>
+                  <ul>
+                    <li>
+                      <b>System voltage</b> — Your DC bus nominal voltage
+                      (12/24/48 V). Affects Amp-hour conversions (Wh ÷ V = Ah) and
+                      alternator/charger energy.
+                    </li>
+                    <li>
+                      <b>Battery chemistry</b> — Sets default usable DoD: LFP ≈
+                      88%, AGM ≈ 50%, Gel ≈ 55%.
+                    </li>
+                    <li>
+                      <b>Usable DoD (%)</b> — Portion of the bank you plan to use
+                      before recharge.
+                    </li>
+                    <li>
+                      <b>Reserve margin (%)</b> — Extra headroom added to trip
+                      energy (weather, unexpected loads).
+                    </li>
+                    <li>
+                      <b>Trip length (days)</b> — Multiplies “per-day” loads.
+                    </li>
+                    <li>
+                      <b>Capacity derate (%)</b> — Reduces nameplate capacity to
+                      model cold/aging.
+                    </li>
+                    <li>
+                      <b>Inverter efficiency (%)</b> — Used to inflate AC loads
+                      back to DC side.
+                    </li>
+                    <li>
+                      <b>Inverter standby (W)</b> — “On but idle” draw; uses max
+                      AC hours per mode (Anchor/Underway).
+                    </li>
+                  </ul>
+
+                  <h4>2) Loads Table (Per-Day Inputs)</h4>
+                  <ul>
+                    <li>
+                      <b>Name / Category</b> — Any label; category is for
+                      grouping.
+                    </li>
+                    <li><b>Type</b> — <i>DC</i> or <i>AC via inverter</i>.</li>
+                    <li>
+                      <b>Entry</b> — Enter power/current as <i>Watts</i> or
+                      <i>Amps</i>.
+                    </li>
+                    <li><b>W/A</b> — The numeric value (e.g., 60 W or 2 A).</li>
+                    <li>
+                      <b>Hours @ Anchor / Underway</b> — Hours the device runs in
+                      each mode.
+                    </li>
+                    <li>
+                      <b>Duty %</b> — Percent on-time within those hours (e.g., a
+                      fridge might cycle 35%).
+                    </li>
+                    <li><b>Qty</b> — Number of identical devices.</li>
+                  </ul>
+
+                  <h4>3) Generation &amp; Charging</h4>
+                  <ul>
+                    <li>
+                      <b>Solar</b> — Panel W × Panels × Sun Hours × (1 − Derate%)
+                      × Controller Eff%.
+                    </li>
+                    <li><b>Wind</b> — Rated W × Capacity Factor% × Hours.</li>
+                    <li><b>Alternator</b> — DC Amps × System V × Hours.</li>
+                    <li><b>AC Charger</b> — DC Amps × V × Hours × Eff%.</li>
+                  </ul>
+
+                  <h4>4) Calculations</h4>
+                  <ul>
+                    <li>
+                      <b>Row energy (DC)</b>
+                      <ul>
+                        <li>
+                          If entry = <b>W</b>:
+                          <code>Wh = Watts × Hours × Duty × Qty</code>
+                        </li>
+                        <li>
+                          If entry = <b>A</b>:
+                          <code>Wh = Amps × System V × Hours × Duty × Qty</code>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <b>Row energy (AC via inverter)</b>
+                      <ul>
+                        <li>
+                          If entry = <b>W</b>:
+                          <code
+                            >Wh = Watts × Hours × Duty × Qty ÷ InverterEff</code
+                          >
+                        </li>
+                        <li>
+                          If entry = <b>A</b>:
+                          <code
+                            >Wh = Amps × 120 V × Hours × Duty × Qty ÷
+                            InverterEff</code
+                          >
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <b>Inverter standby Wh/day</b> —
+                      <code
+                        >StandbyW × (max AC hours @ Anchor + max AC hours
+                        Underway)</code
+                      >
+                    </li>
+                    <li>
+                      <b>Total Loads (per day)</b> — Sum of all rows + inverter
+                      standby.
+                    </li>
+                    <li>
+                      <b>Total Generation (per day)</b> — Sum of all sources (at
+                      system V).
+                    </li>
+                    <li>
+                      <b>Net (per day)</b> —
+                      <code>Generation − Loads</code> (positive = surplus).
+                    </li>
+                    <li>
+                      <b>Trip energy</b> — <code>Loads/day × Trip days</code>.
+                    </li>
+                    <li>
+                      <b>Battery sizing</b>
+                      <ul>
+                        <li>Trip Ah = <code>Trip Wh ÷ V</code></li>
+                        <li>
+                          Usable required Ah =
+                          <code>Trip Ah × (1 + Reserve%)</code>
+                        </li>
+                        <li>
+                          <b>Nameplate Ah</b> = <code>Usable Ah ÷ DoD</code>, then
+                          adjust for <code>Derate</code> if set.
+                        </li>
+                        <li>
+                          Suggested layout ≈ number of 100 Ah modules @ system V.
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+
+                  <h4>5) KPIs &amp; Units</h4>
+                  <ul>
+                    <li>
+                      Use the <b>Ah/Wh toggle</b> to switch units (defaults to
+                      Ah). KPIs and Reports follow your selection.
+                    </li>
+                    <li>
+                      Net card colors: green = surplus, yellow = small deficit,
+                      red = larger deficit.
+                    </li>
+                  </ul>
+
+                  <h4>6) Reports</h4>
+                  <ul>
+                    <li>
+                      <b>Bar Chart</b> — Generation (positive), Consumption (shown
+                      as negative), and Net per day.
+                    </li>
+                    <li>
+                      <b>Line Chart</b> — Cumulative consumption over the trip.
+                    </li>
+                    <li>Both charts react to the Ah/Wh toggle.</li>
+                  </ul>
+
+                  <h4>7) Save / Load / Export / Print</h4>
+                  <ul>
+                    <li>
+                      <b>Save</b> — Stores your scenario in browser storage.
+                    </li>
+                    <li><b>Load</b> — Restores the saved scenario.</li>
+                    <li>
+                      <b>Export CSV</b> — Exports load rows and summary KPIs.
+                    </li>
+                    <li>
+                      <b>Print Report</b> — Prints a clean report view of the
+                      current state.
+                    </li>
+                  </ul>
+
+                  <h4>8) Defaults &amp; Autosave</h4>
+                  <ul>
+                    <li>
+                      On first run (or after Reset), a sensible set of example
+                      loads &amp; solar generation is added.
+                    </li>
+                    <li>
+                      Autosave runs in the background so you don’t lose work;
+                      <b>Reset</b> clears autosave.
+                    </li>
+                  </ul>
+
+                  <h4>9) Tips</h4>
+                  <ul>
+                    <li>
+                      Convert incandescent/halogen to LED to shrink nightly loads.
+                    </li>
+                    <li>Mind inverter standby; switch off when not needed.</li>
+                    <li>
+                      For AC devices, consider using actual measured watts
+                      (Kill-A-Watt / spec sheet).
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
-            <!-- NEW: USER MANUAL -->
+            <!-- Unit Toggle (unchanged) -->
             <div
-              id="pane-manual"
-              class="pane"
-              role="tabpanel"
-              aria-labelledby="tab-manual"
-            >
-              <div class="card" style="padding: 12px">
-                <h3 style="margin: 0 0 10px">User Manual</h3>
-                <p class="muted" style="margin-top: 0">
-                  This tab explains each field, the core math, and how to
-                  interpret results.
-                </p>
-
-                <h4>1) System &amp; Sizing Settings</h4>
-                <ul>
-                  <li>
-                    <b>System voltage</b> — Your DC bus nominal voltage
-                    (12/24/48 V). Affects Amp-hour conversions (Wh ÷ V = Ah) and
-                    alternator/charger energy.
-                  </li>
-                  <li>
-                    <b>Battery chemistry</b> — Sets default usable DoD: LFP ≈
-                    88%, AGM ≈ 50%, Gel ≈ 55%.
-                  </li>
-                  <li>
-                    <b>Usable DoD (%)</b> — Portion of the bank you plan to use
-                    before recharge.
-                  </li>
-                  <li>
-                    <b>Reserve margin (%)</b> — Extra headroom added to trip
-                    energy (weather, unexpected loads).
-                  </li>
-                  <li>
-                    <b>Trip length (days)</b> — Multiplies “per-day” loads.
-                  </li>
-                  <li>
-                    <b>Capacity derate (%)</b> — Reduces nameplate capacity to
-                    model cold/aging.
-                  </li>
-                  <li>
-                    <b>Inverter efficiency (%)</b> — Used to inflate AC loads
-                    back to DC side.
-                  </li>
-                  <li>
-                    <b>Inverter standby (W)</b> — “On but idle” draw; uses max
-                    AC hours per mode (Anchor/Underway).
-                  </li>
-                </ul>
-
-                <h4>2) Loads Table (Per-Day Inputs)</h4>
-                <ul>
-                  <li>
-                    <b>Name / Category</b> — Any label; category is for
-                    grouping.
-                  </li>
-                  <li><b>Type</b> — <i>DC</i> or <i>AC via inverter</i>.</li>
-                  <li>
-                    <b>Entry</b> — Enter power/current as <i>Watts</i> or
-                    <i>Amps</i>.
-                  </li>
-                  <li><b>W/A</b> — The numeric value (e.g., 60 W or 2 A).</li>
-                  <li>
-                    <b>Hours @ Anchor / Underway</b> — Hours the device runs in
-                    each mode.
-                  </li>
-                  <li>
-                    <b>Duty %</b> — Percent on-time within those hours (e.g., a
-                    fridge might cycle 35%).
-                  </li>
-                  <li><b>Qty</b> — Number of identical devices.</li>
-                </ul>
-
-                <h4>3) Generation &amp; Charging</h4>
-                <ul>
-                  <li>
-                    <b>Solar</b> — Panel W × Panels × Sun Hours × (1 − Derate%)
-                    × Controller Eff%.
-                  </li>
-                  <li><b>Wind</b> — Rated W × Capacity Factor% × Hours.</li>
-                  <li><b>Alternator</b> — DC Amps × System V × Hours.</li>
-                  <li><b>AC Charger</b> — DC Amps × V × Hours × Eff%.</li>
-                </ul>
-
-                <h4>4) Calculations</h4>
-                <ul>
-                  <li>
-                    <b>Row energy (DC)</b>
-                    <ul>
-                      <li>
-                        If entry = <b>W</b>:
-                        <code>Wh = Watts × Hours × Duty × Qty</code>
-                      </li>
-                      <li>
-                        If entry = <b>A</b>:
-                        <code>Wh = Amps × System V × Hours × Duty × Qty</code>
-                      </li>
-                    </ul>
-                  </li>
-                  <li>
-                    <b>Row energy (AC via inverter)</b>
-                    <ul>
-                      <li>
-                        If entry = <b>W</b>:
-                        <code
-                          >Wh = Watts × Hours × Duty × Qty ÷ InverterEff</code
-                        >
-                      </li>
-                      <li>
-                        If entry = <b>A</b>:
-                        <code
-                          >Wh = Amps × 120 V × Hours × Duty × Qty ÷
-                          InverterEff</code
-                        >
-                      </li>
-                    </ul>
-                  </li>
-                  <li>
-                    <b>Inverter standby Wh/day</b> —
-                    <code
-                      >StandbyW × (max AC hours @ Anchor + max AC hours
-                      Underway)</code
-                    >
-                  </li>
-                  <li>
-                    <b>Total Loads (per day)</b> — Sum of all rows + inverter
-                    standby.
-                  </li>
-                  <li>
-                    <b>Total Generation (per day)</b> — Sum of all sources (at
-                    system V).
-                  </li>
-                  <li>
-                    <b>Net (per day)</b> —
-                    <code>Generation − Loads</code> (positive = surplus).
-                  </li>
-                  <li>
-                    <b>Trip energy</b> — <code>Loads/day × Trip days</code>.
-                  </li>
-                  <li>
-                    <b>Battery sizing</b>
-                    <ul>
-                      <li>Trip Ah = <code>Trip Wh ÷ V</code></li>
-                      <li>
-                        Usable required Ah =
-                        <code>Trip Ah × (1 + Reserve%)</code>
-                      </li>
-                      <li>
-                        <b>Nameplate Ah</b> = <code>Usable Ah ÷ DoD</code>, then
-                        adjust for <code>Derate</code> if set.
-                      </li>
-                      <li>
-                        Suggested layout ≈ number of 100 Ah modules @ system V.
-                      </li>
-                    </ul>
-                  </li>
-                </ul>
-
-                <h4>5) KPIs &amp; Units</h4>
-                <ul>
-                  <li>
-                    Use the <b>Ah/Wh toggle</b> to switch units (defaults to
-                    Ah). KPIs and Reports follow your selection.
-                  </li>
-                  <li>
-                    Net card colors: green = surplus, yellow = small deficit,
-                    red = larger deficit.
-                  </li>
-                </ul>
-
-                <h4>6) Reports</h4>
-                <ul>
-                  <li>
-                    <b>Bar Chart</b> — Generation (positive), Consumption (shown
-                    as negative), and Net per day.
-                  </li>
-                  <li>
-                    <b>Line Chart</b> — Cumulative consumption over the trip.
-                  </li>
-                  <li>Both charts react to the Ah/Wh toggle.</li>
-                </ul>
-
-                <h4>7) Save / Load / Export / Print</h4>
-                <ul>
-                  <li>
-                    <b>Save</b> — Stores your scenario in browser storage.
-                  </li>
-                  <li><b>Load</b> — Restores the saved scenario.</li>
-                  <li>
-                    <b>Export CSV</b> — Exports load rows and summary KPIs.
-                  </li>
-                  <li>
-                    <b>Print Report</b> — Prints a clean report view of the
-                    current state.
-                  </li>
-                </ul>
-
-                <h4>8) Defaults &amp; Autosave</h4>
-                <ul>
-                  <li>
-                    On first run (or after Reset), a sensible set of example
-                    loads &amp; solar generation is added.
-                  </li>
-                  <li>
-                    Autosave runs in the background so you don’t lose work;
-                    <b>Reset</b> clears autosave.
-                  </li>
-                </ul>
-
-                <h4>9) Tips</h4>
-                <ul>
-                  <li>
-                    Convert incandescent/halogen to LED to shrink nightly loads.
-                  </li>
-                  <li>Mind inverter standby; switch off when not needed.</li>
-                  <li>
-                    For AC devices, consider using actual measured watts
-                    (Kill-A-Watt / spec sheet).
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <!-- Unit Toggle (unchanged) -->
-          <div
-            class="no-print"
-            style="
-              margin: 10px 0 12px;
-              display: flex;
-              align-items: center;
-              gap: 12px;
-            "
-          >
-            <span class="note">Display units:</span>
-            <label
+              class="no-print"
               style="
-                font-size: 12px;
-                color: var(--muted);
+                margin: 10px 0 12px;
                 display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 12px;
               "
             >
-              <input type="radio" name="unitMode" value="Wh" id="unitWh" /> Wh
-            </label>
-            <label
-              style="
-                font-size: 12px;
-                color: var(--muted);
-                display: flex;
-                align-items: center;
-                gap: 6px;
-              "
-            >
-              <input
-                type="radio"
-                name="unitMode"
-                value="Ah"
-                id="unitAh"
-                checked
-              />
-              Ah
-            </label>
-            <span class="note">Affects KPIs and Reports.</span>
-          </div>
+              <span class="note">Display units:</span>
+              <label
+                style="
+                  font-size: 12px;
+                  color: var(--muted);
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                "
+              >
+                <input type="radio" name="unitMode" value="Wh" id="unitWh" /> Wh
+              </label>
+              <label
+                style="
+                  font-size: 12px;
+                  color: var(--muted);
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                "
+              >
+                <input
+                  type="radio"
+                  name="unitMode"
+                  value="Ah"
+                  id="unitAh"
+                  checked
+                />
+                Ah
+              </label>
+              <span class="note">Affects KPIs and Reports.</span>
+            </div>
 
-          <!-- ===== NEW: Cognitively grouped bottom outputs ===== -->
+            <!-- ===== NEW: Cognitively grouped bottom outputs ===== -->
 
-          <!-- LOADS -->
-          <div class="pillhead">
-            <span class="pill pill--loads">LOADS</span
-            ><span class="note"
-              >Anchor / Underway and total daily consumption</span
-            >
-          </div>
-          <div class="family">
-            <div class="summary compact">
-              <div class="kpi">
-                <div class="label">LOADS — DC + AC (after inverter)</div>
-                <div id="whDay" class="value">0</div>
-              </div>
-              <div class="kpi hidden">
-                <div class="label">LOADS — DC + AC (after inverter)</div>
-                <div id="ahDay" class="value">0</div>
-              </div>
-              <div class="kpi">
-                <div class="label">Anchor — per day</div>
-                <div id="anchorWhAh" class="value">0</div>
-              </div>
-              <div class="kpi">
-                <div class="label">Underway — per day</div>
-                <div id="sailWhAh" class="value">0</div>
-              </div>
-              <div class="kpi">
-                <div class="label">Est. inverter standby</div>
-                <div id="invStandbyWh" class="value">0</div>
+            <!-- LOADS -->
+            <div class="pillhead">
+              <span class="pill pill--loads">LOADS</span
+              ><span class="note"
+                >Anchor / Underway and total daily consumption</span
+              >
+            </div>
+            <div class="family">
+              <div class="summary compact">
+                <div class="kpi">
+                  <div class="label">LOADS — DC + AC (after inverter)</div>
+                  <div id="whDay" class="value">0</div>
+                </div>
+                <div class="kpi hidden">
+                  <div class="label">LOADS — DC + AC (after inverter)</div>
+                  <div id="ahDay" class="value">0</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Anchor — per day</div>
+                  <div id="anchorWhAh" class="value">0</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Underway — per day</div>
+                  <div id="sailWhAh" class="value">0</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Est. inverter standby</div>
+                  <div id="invStandbyWh" class="value">0</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- GEN -->
-          <div class="pillhead">
-            <span class="pill pill--gen">GEN</span
-            ><span class="note">Total daily generation/charging</span>
-          </div>
-          <div class="family">
-            <div class="summary compact">
-              <div class="kpi">
-                <div class="label">GEN — Total</div>
-                <div id="genWhDay" class="value">0</div>
-              </div>
-              <div class="kpi hidden">
-                <div class="label">GEN — Total</div>
-                <div id="genAhDay" class="value">0</div>
+            <!-- GEN -->
+            <div class="pillhead">
+              <span class="pill pill--gen">GEN</span
+              ><span class="note">Total daily generation/charging</span>
+            </div>
+            <div class="family">
+              <div class="summary compact">
+                <div class="kpi">
+                  <div class="label">GEN — Total</div>
+                  <div id="genWhDay" class="value">0</div>
+                </div>
+                <div class="kpi hidden">
+                  <div class="label">GEN — Total</div>
+                  <div id="genAhDay" class="value">0</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- BALANCE -->
-          <div class="pillhead">
-            <span class="pill pill--balance">BALANCE</span
-            ><span class="note"
-              >Net daily balance, trip total, and bank sizing</span
-            >
-          </div>
-          <div class="family">
-            <div class="summary compact">
-              <div class="kpi">
-                <div class="label">NET (Gen − Loads)</div>
-                <div id="netWhDay" class="value">0</div>
-              </div>
-              <div class="kpi hidden">
-                <div class="label">NET (Gen − Loads)</div>
-                <div id="netAhDay" class="value">0</div>
-              </div>
-              <div class="kpi">
-                <div class="label">Trip energy (loads only)</div>
-                <div id="tripWhAh" class="value">0</div>
-              </div>
-              <div class="kpi">
-                <div class="label">Battery required — Usable / Nameplate</div>
-                <div id="bankAh" class="value">0 / 0</div>
-              </div>
-              <div class="kpi">
-                <div class="label">Suggested module layout</div>
-                <div id="suggestLayout" class="value">—</div>
+            <!-- BALANCE -->
+            <div class="pillhead">
+              <span class="pill pill--balance">BALANCE</span
+              ><span class="note"
+                >Net daily balance, trip total, and bank sizing</span
+              >
+            </div>
+            <div class="family">
+              <div class="summary compact">
+                <div class="kpi">
+                  <div class="label">NET (Gen − Loads)</div>
+                  <div id="netWhDay" class="value">0</div>
+                </div>
+                <div class="kpi hidden">
+                  <div class="label">NET (Gen − Loads)</div>
+                  <div id="netAhDay" class="value">0</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Trip energy (loads only)</div>
+                  <div id="tripWhAh" class="value">0</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Battery required — Usable / Nameplate</div>
+                  <div id="bankAh" class="value">0 / 0</div>
+                </div>
+                <div class="kpi">
+                  <div class="label">Suggested module layout</div>
+                  <div id="suggestLayout" class="value">—</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- RECOMMENDATIONS -->
-          <div class="pillhead">
-            <span class="pill pill--recs">RECOMMENDATIONS</span
-            ><span class="note">Hints based on your model</span>
-          </div>
-          <div class="family">
-            <ul class="muted" style="margin: 0 0 4px 18px">
-              <li>
-                Reduce anchor lighting by switching to LEDs (if not already).
-              </li>
-              <li>
-                Turn off inverter when AC loads are not needed to avoid standby
-                draw.
-              </li>
-              <li>
-                Consider adding solar or runtime if Net is negative on most
-                days.
-              </li>
-            </ul>
-          </div>
+            <!-- RECOMMENDATIONS -->
+            <div class="pillhead">
+              <span class="pill pill--recs">RECOMMENDATIONS</span
+              ><span class="note">Hints based on your model</span>
+            </div>
+            <div class="family">
+              <ul class="muted" style="margin: 0 0 4px 18px">
+                <li>
+                  Reduce anchor lighting by switching to LEDs (if not already).
+                </li>
+                <li>
+                  Turn off inverter when AC loads are not needed to avoid standby
+                  draw.
+                </li>
+                <li>
+                  Consider adding solar or runtime if Net is negative on most
+                  days.
+                </li>
+              </ul>
+            </div>
 
-          <!-- Hidden voltage mirrors (unchanged) -->
-          <span id="vLabel" class="hidden">12</span>
-          <span id="vLabel2" class="hidden">12</span>
-        </div>
-      </section>
-    </main>
-  </body>
-</html>
+            <!-- Hidden voltage mirrors (unchanged) -->
+            <span id="vLabel" class="hidden">12</span>
+            <span id="vLabel2" class="hidden">12</span>
+          </div>
+        </section>
+      </main>
+    </body>
+  </html>
