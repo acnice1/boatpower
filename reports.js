@@ -353,65 +353,143 @@ return combined.map((c) => {
   }
 
   // ---------- Gauge ----------
-  function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
-    const canvas = document.getElementById("chartGauge");
-    const fallback = document.getElementById("chartGaugeFallback");
-    if (!canvas) return;
+ // ---------- Gauge (semicircle with needle) ----------
+function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
+  const canvas = document.getElementById("chartGauge");
+  const fallback = document.getElementById("chartGaugeFallback");
+  if (!canvas) return;
 
-    const valid = (bank > 0) && (trip >= 0);
-    if (!valid) {
-      if (fallback) {
-        canvas.style.display = "none";
-        fallback.style.display = "";
-        fallback.innerHTML = `<div class="muted">Provide a usable bank value to show this gauge.</div>`;
-      }
-      return;
-    }
-
-    const used = Math.min(trip, bank);
-    const remaining = Math.max(bank - used, 0);
-
-    if (hasChart) {
-      fallback.style.display = "none";
-      canvas.style.display = "";
-      destroyIfAny(canvas);
-
-      new Chart(canvas.getContext("2d"), {
-        type: "doughnut",
-        data: {
-          labels: [`Trip (${unitLabel})`, `Remaining (${unitLabel})`],
-          datasets: [{ data: [used, remaining], borderWidth: 1 }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          rotation: -Math.PI,
-          circumference: Math.PI,
-          cutout: "70%",
-          plugins: {
-            legend: { position: "bottom" },
-            tooltip: {
-              callbacks: {
-                label(ctx) {
-                  const v = ctx.parsed;
-                  const txt = ctx.label || "";
-                  const mag = typeof window.fmt === "function" ? window.fmt(v) : v.toFixed(0);
-                  return ` ${txt}: ${mag} ${unitLabel}`;
-                },
-              },
-            },
-          },
-        },
-      });
-    } else {
+  const valid = (bank > 0) && (trip >= 0);
+  if (!valid) {
+    if (fallback) {
       canvas.style.display = "none";
       fallback.style.display = "";
-      const _fmt = window.fmt || ((x) => x);
-      fallback.innerHTML = `
-        <div class="muted">Gauge unavailable (no chart lib). Summary:</div>
-        <div>Trip: <b>${_fmt(trip)}</b> ${unitLabel} • Bank usable: <b>${_fmt(bank)}</b> ${unitLabel}</div>`;
+      fallback.innerHTML = `<div class="muted">Provide a usable bank value to show this gauge.</div>`;
     }
+    return;
   }
+
+  // percent used (clamped 0..1)
+  const pctUsed = Math.max(0, Math.min(1, trip / bank));
+  const pctText = Math.round(pctUsed * 100);
+
+  // Zone cutoffs (tweak to taste)
+  const z1 = 0.60; // green up to 60%
+  const z2 = 0.85; // yellow up to 85%, red to 100%
+
+  // Build zone dataset as three wedge segments that always fill 100%
+  // The needle shows where pctUsed lands.
+  const zoneData = [
+    Math.min(pctUsed, z1),                    // actual used within green
+    Math.max(0, Math.min(pctUsed, z2) - z1),  // used within yellow
+    Math.max(0, pctUsed - z2),                // used within red
+    Math.max(0, z1 - pctUsed),                // remaining in green
+    Math.max(0, z2 - Math.max(pctUsed, z1)),  // remaining in yellow
+    Math.max(0, 1 - Math.max(pctUsed, z2)),   // remaining in red
+  ];
+
+  // Guard against tiny floating errors
+  const sum = zoneData.reduce((a,b)=>a+b,0) || 1;
+  for (let i=0;i<zoneData.length;i++) zoneData[i] = zoneData[i]/sum;
+
+  if (hasChart) {
+    fallback.style.display = "none";
+    canvas.style.display = "";
+    destroyIfAny(canvas);
+
+    // Custom plugin to draw a needle & center text
+    const needlePlugin = {
+      id: "gaugeNeedle",
+      afterDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data || !meta.data.length) return;
+
+        const center = meta.data[0].getProps(["x","y"], true);
+        const x = center.x;
+        const y = center.y;
+
+        // Needle angle: map [0..1] to [-PI .. 0] (left to right semicircle)
+        const angle = -Math.PI + (Math.PI * pctUsed);
+
+        // Needle length is a bit less than outer radius
+        const arc = meta.data[0];
+        const outerRadius = arc.outerRadius || (Math.min(chart.width, chart.height) / 2);
+        const needleLen = outerRadius * 0.9;
+
+        ctx.save();
+
+        // Draw needle
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(-4, 0);
+        ctx.lineTo(needleLen, 0);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#fff";
+        ctx.stroke();
+        ctx.closePath();
+
+        // Needle hub
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+
+        ctx.restore();
+
+        // Center text (% + values)
+        ctx.save();
+        ctx.fillStyle = "#e6edf3";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "600 16px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu";
+        ctx.fillText(`${pctText}% used`, x, y - 6);
+        ctx.font = "500 12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu";
+        const fmt = (n) => (typeof window.fmt === "function" ? window.fmt(n) : (Math.round(n*10)/10));
+        ctx.fillText(`${fmt(trip)} ${unitLabel} / ${fmt(bank)} ${unitLabel}`, x, y + 12);
+        ctx.restore();
+      }
+    };
+
+
+    new Chart(canvas.getContext("2d"), {
+  type: "doughnut",
+  data: {
+    datasets: [{
+      data: zoneData,
+      borderWidth: 1,
+      backgroundColor: [
+        "#22c55e", "#f59e0b", "#ef4444",
+        "rgba(34,197,94,0.35)", "rgba(245,158,11,0.35)", "rgba(239,68,68,0.35)"
+      ],
+      borderColor: "rgba(31,42,68,0.6)",
+    }],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,   // let container set height
+    rotation: 270,           // start at 180° (left)
+    circumference: 180,       // draw 180°
+    cutout: "55%",
+    plugins: {
+      legend: { display: false },
+      // tooltip: { enabled: false }, // optional
+    },
+  },
+  plugins: [needlePlugin],
+});
+
+  } else {
+    canvas.style.display = "none";
+    fallback.style.display = "";
+    const _fmt = window.fmt || ((x) => x);
+    fallback.innerHTML = `
+      <div class="muted">Gauge unavailable (no chart lib). Summary:</div>
+      <div>Trip: <b>${_fmt(trip)}</b> ${unitLabel} • Bank usable: <b>${_fmt(bank)}</b> ${unitLabel} • <b>${pctText}%</b> used</div>`;
+  }
+}
+
 
   // ---------- SOC ----------
   function renderSoc({ labels, hasChart, bank, perDayNet }) {
