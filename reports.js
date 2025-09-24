@@ -4,26 +4,22 @@
                window.fmt(), window.escapeHtml()
    Public API:
      window.renderReports({
-       labels,
-       generationWh,
-       consumptionWh,
-       systemVoltage,
-       genBreakdown?: [{label, series:number[]}],
-       useBreakdown?: [{label, series:number[]}],
-       majorThreshold?: number,   // 0..1
-       cumulativeNetWh?: number[],// overlay line on bar
-       tripWh?: number,           // for gauge
-       bankUsableWh?: number      // for gauge & SOC
+       labels,                 // ["Day 1", ...]
+       generationWh,           // per-day Wh array
+       consumptionWh,          // per-day Wh array
+       systemVoltage,          // number (12/24/48...)
+       genBreakdown?: [{label, series:number[]}], // per-day Wh
+       useBreakdown?: [{label, series:number[]}], // per-day Wh
+       majorThreshold?: number,   // 0..1 (stacked "Other" cutoff)
+       cumulativeNetWh?: number[],// per-step cumulative in Wh (optional)
+       tripWh?: number,           // loads-only trip Wh (still used for KPIs elsewhere)
+       tripNetWh?: number,        // NEW: (loads - gen) * days (Wh); positive => battery supplies energy
+       bankUsableWh?: number      // Usable bank energy in Wh (DoD/derate applied)
      })
    ========================================================= */
 
 (function () {
-  let reportsBarChart = null;
-  let reportsLineChart = null;
-  let reportsStackedChart = null;
-  let chartGauge = null;
-  let chartSoc = null;
-
+  // Keep references if we re-render
   function destroyIfAny(canvasEl) {
     if (!canvasEl || !window.Chart) return;
     if (typeof Chart.getChart === "function") {
@@ -43,6 +39,8 @@
   function updateReportsFromModel(model) {
     if (!model || !Array.isArray(model.labels)) return;
 
+    window.__reportsOpts = model; // expose current model to gauge/SOC renderers
+
     const labels = model.labels.slice();
     const genWh = (model.generationWh || []).map((x) => +x || 0);
     const useWh = (model.consumptionWh || []).map((x) => +x || 0);
@@ -54,25 +52,29 @@
     while (genWh.length < len) genWh.push(0);
     while (useWh.length < len) useWh.push(0);
 
+    // Unit mode from toggle (default Ah)
     const isAh = (typeof window.unitMode !== "undefined" ? window.unitMode : "Ah") === "Ah";
     const unitLabel = isAh ? "Ah" : "Wh";
     const yTitle = isAh ? "Amp-hours (Ah)" : "Watt-hours (Wh)";
 
+    // Convert to chart units
     const gen = isAh ? genWh.map((x) => x / v) : genWh.slice();
     const use = isAh ? useWh.map((x) => x / v) : useWh.slice();
     const net = gen.map((g, i) => g - use[i]);
 
-    // Cumulative consumption for line
+    // Cumulative consumption (line chart)
     const cumulativeUse = [];
     use.reduce((acc, val, i) => ((cumulativeUse[i] = acc + val), acc + val), 0);
 
-    // Optional cumulative net overlay
+    // Optional cumulative net overlay (now as bars on same axis)
     let cumNet = null;
     if (Array.isArray(model.cumulativeNetWh)) {
       cumNet = isAh
         ? model.cumulativeNetWh.map((x) => (+x || 0) / v)
         : model.cumulativeNetWh.map((x) => +x || 0);
-      while (cumNet.length < labels.length) cumNet.push( (cumNet[cumNet.length-1]||0) );
+      while (cumNet.length < labels.length) {
+        cumNet.push(cumNet.length ? cumNet[cumNet.length - 1] : 0);
+      }
     }
 
     const hasChart = typeof window.Chart !== "undefined";
@@ -85,9 +87,11 @@
     const hasBreakdowns =
       (model.genBreakdown && model.genBreakdown.length) ||
       (model.useBreakdown && model.useBreakdown.length);
+
     if (hasBreakdowns) {
       const convertSeries = (series) =>
         isAh ? series.map((x) => (+x || 0) / v) : series.map((x) => +x || 0);
+
       const genBD = (model.genBreakdown || []).map((b) => ({
         label: String(b.label || "Unnamed"),
         series: convertSeries(b.series || []),
@@ -114,14 +118,16 @@
       hideStackedFallback();
     }
 
-    // Gauge + SOC (optional, need bank)
-    const trip = +model.tripWh || 0;
+    // Gauge + SOC
     const bankWh = +model.bankUsableWh || 0;
+    const bankU  = isAh ? (bankWh / v) : bankWh; // SOC expects display unit (Ah/Wh)
 
-    const tripU = isAh ? trip / v : trip;
-    const bankU = isAh ? bankWh / v : bankWh;
+    // --- Gauge is AH-ONLY to avoid unit/voltage mismatches ---
+    const tripNetWh = +model.tripNetWh || 0;        // if missing, assume 0
+    const bankAh    = bankWh / v;
+    const tripNetAh = tripNetWh / v;
 
-    renderGaugeTripVsBank({ hasChart, unitLabel, trip: tripU, bank: bankU });
+    renderGaugeTripVsBank({ hasChart, bankAh, tripNetAh });
     renderSoc({ labels, hasChart, bank: bankU, perDayNet: net });
   }
 
@@ -142,14 +148,13 @@
         { label: `Consumption (${unitLabel})`, data: negUse, borderWidth: 1, yAxisID: "y" },
         { label: `Net (${unitLabel})`, data: net, borderWidth: 1, yAxisID: "y" },
       ];
-   if (Array.isArray(cumNet)) {
-  datasets.push({
-    label: `Cumulative Net (${unitLabel})`,
-    data: cumNet,
-    borderWidth: 1,
-    yAxisID: "y"
-  });
-
+      if (Array.isArray(cumNet)) {
+        datasets.push({
+          label: `Cumulative Net (${unitLabel})`,
+          data: cumNet,
+          borderWidth: 1,
+          yAxisID: "y",
+        });
       }
 
       new Chart(canvas.getContext("2d"), {
@@ -178,14 +183,8 @@
   // ---------- Line ----------
   function renderReportsLine({ labels, cumulativeUse, hasChart, unitLabel, yTitle }) {
     const canvas = document.getElementById("reportsLine");
-    const fallback = document.getElementById("reportsLineFallback");
-    if (!canvas) return;
-
-    if (hasChart) {
-      fallback.style.display = "none";
-      canvas.style.display = "";
+    theFallback(canvas, "reportsLineFallback", hasChart, () => {
       destroyIfAny(canvas);
-
       new Chart(canvas.getContext("2d"), {
         type: "line",
         data: {
@@ -213,11 +212,7 @@
           },
         },
       });
-    } else {
-      canvas.style.display = "none";
-      fallback.style.display = "";
-      fallback.innerHTML = buildLineFallbackTable(labels, cumulativeUse, unitLabel);
-    }
+    });
   }
 
   // ---------- Stacked ----------
@@ -313,24 +308,17 @@
 
     const combined = other ? [...majors, other] : majors;
 
-return combined.map((c) => {
-  // keep numbers; Chart.js will parse numbers fine when parsing !== false
-  const signed = c.series.map((v) =>
-    positive ? (+v || 0) : -Math.abs(+v || 0)
-  );
-  const percentPerDay = percentagesPerDay(c.series, totals);
-
-  return {
-    label: c.label,
-    data: signed,            // <-- array of numbers is OK
-    borderWidth: 1,
-    // keep your extra payload for tooltips:
-    rawPct: percentPerDay.map((p) => (p * 100).toFixed(1)),
-    // DO NOT set parsing:false here
-    // put gen/use on separate stacks (optional but recommended):
-    stack: positive ? "gen" : "use",
-  };
-});
+    return combined.map((c) => {
+      const signed = c.series.map((v) => (positive ? (+v || 0) : -Math.abs(+v || 0)));
+      const percentPerDay = percentagesPerDay(c.series, totals);
+      return {
+        label: c.label,
+        data: signed,
+        borderWidth: 1,
+        rawPct: percentPerDay.map((p) => (p * 100).toFixed(1)),
+        stack: positive ? "gen" : "use",
+      };
+    });
   }
 
   function percentagesPerDay(series, totals) {
@@ -352,142 +340,148 @@ return combined.map((c) => {
     });
   }
 
-  // ---------- Gauge ----------
- // ---------- Gauge (semicircle with needle) ----------
-function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
+  // ---------- Gauge (Trip Net vs Usable Bank; DEGREES; AH-ONLY INPUTS) ----------
+  // Expects: { hasChart, bankAh, tripNetAh }
+// ---------- Gauge (Trip Net vs Usable Bank; AH-ONLY INPUTS) ----------
+function renderGaugeTripVsBank({ hasChart, bankAh, tripNetAh }) {
   const canvas = document.getElementById("chartGauge");
   const fallback = document.getElementById("chartGaugeFallback");
   if (!canvas) return;
 
-  const valid = (bank > 0) && (trip >= 0);
-  if (!valid) {
-    if (fallback) {
-      canvas.style.display = "none";
-      fallback.style.display = "";
-      fallback.innerHTML = `<div class="muted">Provide a usable bank value to show this gauge.</div>`;
-    }
+  // Degrees → radians (no direct Math.PI usage elsewhere)
+  const toRad = (deg) => deg * 0.017453292519943295; // π/180
+
+  // Gauge geometry
+  const GAUGE_ROT_DEG   = 270; // start at top
+  const GAUGE_SWEEP_DEG = 180; // sweep to bottom (semicircle)
+
+  const _bankAhUsable = Math.max(0, +bankAh || 0);
+  const drawAh        = Math.max(0, +tripNetAh || 0); // positive => battery supplies energy
+
+  // Also pick up nameplate bank if provided by model (passed via renderReports)
+  const model = window.__reportsOpts || {};
+  const v = +model.systemVoltage || 12;
+  const bankNameplateWh = +model.bankNameplateWh || 0;
+  const _bankAhNameplate = bankNameplateWh > 0 ? (bankNameplateWh / v) : _bankAhUsable;
+
+  // Remaining (clip at 0)
+  const remainingUsableAh    = Math.max(0, _bankAhUsable   - drawAh);
+  const remainingNameplateAh = Math.max(0, _bankAhNameplate - drawAh);
+
+  // Fractions for the doughnut
+  const remainingFrac = _bankAhUsable > 0 ? (remainingUsableAh / _bankAhUsable) : 0;
+  const zoneData = [remainingFrac, 1 - remainingFrac];
+  const fmt = (n) => (typeof window.fmt === "function" ? window.fmt(n) : Math.round(n));
+
+  if (!hasChart) {
+    canvas.style.display = "none";
+    fallback.style.display = "";
+    fallback.innerHTML = `
+      <div class="muted">Gauge unavailable.</div>
+      <div>Remaining (usable): <b>${fmt(remainingUsableAh)}</b> Ah
+        • Remaining (nameplate margin): <b>${fmt(remainingNameplateAh)}</b> Ah
+      </div>`;
     return;
   }
 
-  // percent used (clamped 0..1)
-  const pctUsed = Math.max(0, Math.min(1, trip / bank));
-  const pctText = Math.round(pctUsed * 100);
+  canvas.style.display = "";
+  fallback.style.display = "none";
+  destroyIfAny(canvas);
 
-  // Zone cutoffs (tweak to taste)
-  const z1 = 0.60; // green up to 60%
-  const z2 = 0.85; // yellow up to 85%, red to 100%
+  // Draw the needle AFTER datasets are laid out, using chartArea center & true radius
+  const needlePlugin = {
+    id: "gaugeNeedleAhDeg",
+afterDatasetsDraw(chart) {
+  const { ctx } = chart;
 
-  // Build zone dataset as three wedge segments that always fill 100%
-  // The needle shows where pctUsed lands.
-  const zoneData = [
-    Math.min(pctUsed, z1),                    // actual used within green
-    Math.max(0, Math.min(pctUsed, z2) - z1),  // used within yellow
-    Math.max(0, pctUsed - z2),                // used within red
-    Math.max(0, z1 - pctUsed),                // remaining in green
-    Math.max(0, z2 - Math.max(pctUsed, z1)),  // remaining in yellow
-    Math.max(0, 1 - Math.max(pctUsed, z2)),   // remaining in red
-  ];
+  // Get a representative arc (dataset 0, first slice)
+  const meta0 = chart.getDatasetMeta(0);
+  const arc = meta0 && meta0.data && meta0.data[0];
+  if (!arc) return;
 
-  // Guard against tiny floating errors
-  const sum = zoneData.reduce((a,b)=>a+b,0) || 1;
-  for (let i=0;i<zoneData.length;i++) zoneData[i] = zoneData[i]/sum;
+  // Center & radii from Chart.js (radians for angles)
+  const cx = arc.x;
+  const cy = arc.y;
+  const inner = arc.innerRadius || 0;
+  const outer = arc.outerRadius || Math.min(chart.width, chart.height) / 2;
 
-  if (hasChart) {
-    fallback.style.display = "none";
-    canvas.style.display = "";
-    destroyIfAny(canvas);
+  // Actual visible sweep
+  let start = typeof arc.startAngle === "number" ? arc.startAngle : (-Math.PI / 2);
+  let end   = typeof arc.endAngle   === "number" ? arc.endAngle   : ( Math.PI / 2);
+  if (end < start) end += Math.PI * 2; // normalize
+  const sweep = Math.max(1e-6, end - start);
 
-    // Custom plugin to draw a needle & center text
-    const needlePlugin = {
-      id: "gaugeNeedle",
-      afterDraw(chart) {
-        const { ctx, chartArea, scales } = chart;
-        const meta = chart.getDatasetMeta(0);
-        if (!meta || !meta.data || !meta.data.length) return;
+  // remainingFrac is defined in the outer scope of renderGaugeTripVsBank
+  const rf = Math.max(0, Math.min(1, remainingFrac));
 
-        const center = meta.data[0].getProps(["x","y"], true);
-        const x = center.x;
-        const y = center.y;
+  // Angle at the green/red seam
+  const seam = start + rf * sweep;
 
-        // Needle angle: map [0..1] to [-PI .. 0] (left to right semicircle)
-        const angle = -Math.PI + (Math.PI * pctUsed);
+  // Needle runs radially from just inside the inner edge to just shy of the outer
+  const r0 = inner + Math.max(2, outer * 0.01); // 1–2px inside the inner edge
+  const r1 = outer - Math.max(2, outer * 0.02); // a hair before the outer edge
 
-        // Needle length is a bit less than outer radius
-        const arc = meta.data[0];
-        const outerRadius = arc.outerRadius || (Math.min(chart.width, chart.height) / 2);
-        const needleLen = outerRadius * 0.9;
+  const x0 = cx + r0 * Math.cos(seam);
+  const y0 = cy + r0 * Math.sin(seam);
+  const x1 = cx + r1 * Math.cos(seam);
+  const y1 = cy + r1 * Math.sin(seam);
 
-        ctx.save();
+  // Draw needle on top
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#fff";
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
 
-        // Draw needle
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.moveTo(-4, 0);
-        ctx.lineTo(needleLen, 0);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#fff";
-        ctx.stroke();
-        ctx.closePath();
+  // Small hub at the inner edge
+  ctx.beginPath();
+  ctx.arc(x0, y0, 5, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.restore();
 
-        // Needle hub
-        ctx.beginPath();
-        ctx.arc(0, 0, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = "#fff";
-        ctx.fill();
-
-        ctx.restore();
-
-        // Center text (% + values)
-        ctx.save();
-        ctx.fillStyle = "#e6edf3";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "600 16px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu";
-        ctx.fillText(`${pctText}% used`, x, y - 6);
-        ctx.font = "500 12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu";
-        const fmt = (n) => (typeof window.fmt === "function" ? window.fmt(n) : (Math.round(n*10)/10));
-        ctx.fillText(`${fmt(trip)} ${unitLabel} / ${fmt(bank)} ${unitLabel}`, x, y + 12);
-        ctx.restore();
-      }
-    };
+  // ---- Center labels (using outer-scope values you already compute) ----
+  ctx.save();
+  ctx.fillStyle = "#e6edf3";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "600 15px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu";
+  ctx.fillText(`${fmt(remainingUsableAh)} Ah usable`, cx, cy - 7);
+  ctx.font = "500 12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu";
+  ctx.fillText(`${fmt(remainingNameplateAh)} Ah of nameplate`, cx, cy + 11);
+  ctx.restore();
+}
 
 
-    new Chart(canvas.getContext("2d"), {
-  type: "doughnut",
-  data: {
-    datasets: [{
-      data: zoneData,
-      borderWidth: 1,
-      backgroundColor: [
-        "#22c55e", "#f59e0b", "#ef4444",
-        "rgba(34,197,94,0.35)", "rgba(245,158,11,0.35)", "rgba(239,68,68,0.35)"
-      ],
-      borderColor: "rgba(31,42,68,0.6)",
-    }],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,   // let container set height
-    rotation: 270,           // start at 180° (left)
-    circumference: 180,       // draw 180°
-    cutout: "55%",
-    plugins: {
-      legend: { display: false },
-      // tooltip: { enabled: false }, // optional
+
+
+  };
+
+  new Chart(canvas.getContext("2d"), {
+    type: "doughnut",
+    data: {
+      datasets: [{
+        data: zoneData,
+        borderWidth: 0,
+        backgroundColor: [
+          "rgba(34,197,94,0.9)", // remaining (green)
+          "rgba(239,68,68,0.7)"  // used (red)
+        ]
+      }]
     },
-  },
-  plugins: [needlePlugin],
-});
-
-  } else {
-    canvas.style.display = "none";
-    fallback.style.display = "";
-    const _fmt = window.fmt || ((x) => x);
-    fallback.innerHTML = `
-      <div class="muted">Gauge unavailable (no chart lib). Summary:</div>
-      <div>Trip: <b>${_fmt(trip)}</b> ${unitLabel} • Bank usable: <b>${_fmt(bank)}</b> ${unitLabel} • <b>${pctText}%</b> used</div>`;
-  }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      rotation: GAUGE_ROT_DEG,
+      circumference: GAUGE_SWEEP_DEG,
+      cutout: "55%",
+      plugins: { legend: { display: false } }
+    },
+    plugins: [needlePlugin]
+  });
 }
 
 
@@ -507,7 +501,7 @@ function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
     }
 
     const soc = [];
-    let level = bank; // start at 100% usable
+    let level = bank; // start at 100% usable in display unit
     for (let i = 0; i < labels.length; i++) {
       level += perDayNet[i] || 0;
       const pct = Math.max(0, Math.min(100, (level / bank) * 100));
@@ -547,15 +541,28 @@ function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
     } else {
       canvas.style.display = "none";
       fallback.style.display = "";
-      const rows = labels.map((l, i) => `<div>${window.escapeHtml ? window.escapeHtml(l) : l}: ${soc[i]}%</div>`).join("");
+      const rows = labels.map((l, i) => `<div>${escapeHtmlSafe(l)}: ${soc[i]}%</div>`).join("");
       fallback.innerHTML = `<div class="muted">Chart unavailable; SOC values:</div>${rows}`;
     }
   }
 
-  // ---------- Fallback tables ----------
+  // ---------- Fallback helpers ----------
+  function theFallback(canvas, fallbackId, hasChart, onChart) {
+    const fallback = document.getElementById(fallbackId);
+    if (!canvas) return;
+    if (hasChart) {
+      fallback && (fallback.style.display = "none");
+      canvas.style.display = "";
+      onChart();
+    } else {
+      canvas.style.display = "none";
+      fallback && (fallback.style.display = "");
+    }
+  }
+
   function buildBarFallbackTable(labels, gen, use, net, unitLabel) {
     const _fmt = window.fmt || ((x) => x);
-    const _esc = window.escapeHtml || ((s) => String(s));
+    const _esc = escapeHtmlSafe;
     const rows = labels.map((l, i) => `
       <tr>
         <td>${_esc(l)}</td>
@@ -580,7 +587,7 @@ function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
 
   function buildLineFallbackTable(labels, cumulative, unitLabel) {
     const _fmt = window.fmt || ((x) => x);
-    const _esc = window.escapeHtml || ((s) => String(s));
+    const _esc = escapeHtmlSafe;
     const rows = labels.map((l, i) => `
       <tr>
         <td>${_esc(l)}</td>
@@ -601,7 +608,7 @@ function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
 
   function buildStackedFallbackTable({ labels, genDatasets, useDatasets, unitLabel }) {
     const _fmt = window.fmt || ((x) => x);
-    const _esc = window.escapeHtml || ((s) => String(s));
+    const _esc = escapeHtmlSafe;
 
     const rows = labels.map((l, idx) => {
       const genSum = genDatasets.reduce((s, d) => s + (+d.data[idx] || 0), 0);
@@ -634,6 +641,7 @@ function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
       </table>`;
   }
 
+  // ---------- Small utils ----------
   function hideStackedFallback() {
     const canvas = document.getElementById("reportsStacked");
     const fallback = document.getElementById("reportsStackedFallback");
@@ -646,5 +654,10 @@ function renderGaugeTripVsBank({ hasChart, unitLabel, trip, bank }) {
     if (x < 0) return 0;
     if (x > 1) return 1;
     return x;
+  }
+
+  function escapeHtmlSafe(s) {
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+    return String(s).replace(/[&<>"]/g, (c) => map[c]);
   }
 })();

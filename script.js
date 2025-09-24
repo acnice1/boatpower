@@ -671,6 +671,10 @@ function recalc() {
   const consumptionWh = Array.from({ length: d }, () => whDayTotal);
   const cumulativeNetWh = labels.map((_, i) => (genWhDay - whDayTotal) * (i + 1));
 
+  // NEW: net draw from the bank over the trip (Wh)
+  // positive = you need that much from the battery; negative = surplus generation
+  const tripNetWh = (whDayTotal - genWhDay) * d;
+
   // (Optional) stacked breakdowns
   const genBreakdown = buildGenBreakdownSeries(d, state.settings.voltage);
   const useBreakdown = buildUseBreakdownSeries(d);
@@ -682,6 +686,7 @@ const V = state.settings.voltage;
 const der = state.settings.derate / 100;
 const actualUsableBankWh =
   state.settings.actualBankAh * V * usableDoD * (1 - der);
+const actualNameplateWh = state.settings.actualBankAh * V;
 
 // Render only on Reports tab
 if (tabReports.classList.contains("active") && typeof window.renderReports === "function") {
@@ -696,10 +701,12 @@ if (tabReports.classList.contains("active") && typeof window.renderReports === "
     majorThreshold: 0.10,
 
     // New analytics
-    cumulativeNetWh,
-    tripWh,
-    bankUsableWh: actualUsableBankWh,   // <-- now driven by user input
-  });
+      cumulativeNetWh,
+  tripWh,
+  tripNetWh: (whDayTotal - genWhDay) * d,   // <-- ADD THIS LINE
+  bankUsableWh: actualUsableBankWh,
+  bankNameplateWh: actualNameplateWh,
+ });
 }
 }
 
