@@ -44,6 +44,21 @@
             </div>
 
             <div class="row">
+  <div class="pair">
+    <label for="actualBankAh">Actual battery capacity (nameplate, Ah)</label>
+    <input
+      id="actualBankAh"
+      type="number"
+      min="25"
+      step="25"
+      class="number"
+      value="100"
+    />
+  </div>
+  <span class="note">Your installed bank size. Arrows change by 25 Ah.</span>
+</div>
+
+            <div class="row">
               <div class="pair">
                 <label for="chemistry">Battery chemistry</label>
                 <select id="chemistry" class="select">
@@ -410,9 +425,27 @@
     </div>
     <div id="reportsStackedFallback" style="display: none"></div>
   </div>
+
+
+<!-- Trip energy vs usable bank (gauge-ish) -->
+<div class="card" style="margin-top:16px; padding:12px">
+  <h3 style="margin:0 0 8px">Trip Energy vs Usable Bank</h3>
+  <div style="height:200px">
+    <canvas id="chartGauge" height="180"></canvas>
+  </div>
+  <div id="chartGaugeFallback" style="display:none"></div>
 </div>
 
+<!-- State of Charge (SOC) over Trip -->
+<div class="card" style="margin-top:16px; padding:12px">
+  <h3 style="margin:0 0 8px">SOC Over Trip</h3>
+  <div style="height:240px">
+    <canvas id="chartSoc" height="200"></canvas>
+  </div>
+  <div id="chartSocFallback" style="display:none"></div>
+</div>
 
+</div>
               <!-- NEW PANE: Electric Range (stub) -->
               <div
                 id="pane-range"
